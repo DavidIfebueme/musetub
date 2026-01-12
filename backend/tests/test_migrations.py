@@ -7,9 +7,6 @@ from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.platform.db.base import Base
-import app.platform.db.models
-
 
 @pytest.mark.asyncio
 async def test_migrations_apply_cleanly() -> None:
@@ -25,5 +22,25 @@ async def test_migrations_apply_cleanly() -> None:
 
         alembic_cfg = Config("alembic.ini")
         await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+
+        expected_tables = {
+            "alembic_version",
+            "users",
+            "creator_policies",
+            "content",
+            "payment_channels",
+            "settlements",
+            "ai_cache",
+        }
+
+        async with engine.connect() as connection:
+            def _get_tables(sync_connection):
+                from sqlalchemy import inspect
+
+                return set(inspect(sync_connection).get_table_names())
+
+            tables = await connection.run_sync(_get_tables)
+
+        assert expected_tables.issubset(tables)
     finally:
         await engine.dispose()
