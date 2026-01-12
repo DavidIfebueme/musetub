@@ -59,7 +59,7 @@ async def test_register_login_me_flow(monkeypatch: pytest.MonkeyPatch) -> None:
             assert login_response.status_code == 200
 
             me_response = await client.get(
-                "/api/v1/auth/me",
+                "/api/v1/users/me",
                 headers={"Authorization": f"Bearer {token}"},
             )
             assert me_response.status_code == 200
@@ -67,5 +67,13 @@ async def test_register_login_me_flow(monkeypatch: pytest.MonkeyPatch) -> None:
             assert payload["email"] == email
             assert payload["circle_wallet_id"] == "cw_test"
             assert payload["wallet_address"] == "0xabc"
+
+            fund_response = await client.post(
+                "/api/v1/wallets/fund-testnet",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert fund_response.status_code == 200
+            fund_payload = fund_response.json()
+            assert fund_payload["wallet_address"] == "0xabc"
     finally:
         await engine.dispose()
