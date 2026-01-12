@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     ipfs_api_url: str = "http://localhost:5001"
     ipfs_gateway_url: str = "http://localhost:8080/ipfs"
 
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-1.5-flash"
+    gemini_timeout_seconds: float = 10.0
+
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 43200
