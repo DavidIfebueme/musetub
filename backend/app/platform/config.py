@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-1.5-flash"
     gemini_timeout_seconds: float = 10.0
+    gemini_max_prompt_chars: int = 2500
 
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
