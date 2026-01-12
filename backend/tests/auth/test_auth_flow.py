@@ -1,12 +1,15 @@
 import os
+import asyncio
 import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.main import create_app
-from app.platform.db.init_db import create_all
 from app.platform.db.base import Base
 import app.platform.db.models
 
@@ -20,9 +23,11 @@ async def test_register_login_me_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     engine = create_async_engine(database_url, pool_pre_ping=True)
     try:
         async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.drop_all)
+            await connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+            await connection.execute(text("CREATE SCHEMA public"))
 
-        await create_all(engine)
+        alembic_cfg = Config("alembic.ini")
+        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
 
         app = create_app()
 
