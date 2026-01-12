@@ -8,9 +8,11 @@ from app.platform.config import settings
 def create_app() -> FastAPI:
     app = FastAPI(title="MuseTub API")
 
+    allowed_origins = [o.strip() for o in str(settings.allowed_origins).split(",") if o.strip()]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 43200
-    allowed_origins: list[str] = ["http://localhost:3000"]
+    allowed_origins: str = "http://localhost:3000"
 
     circle_api_key: str | None = None
     circle_entity_secret: str | None = None
