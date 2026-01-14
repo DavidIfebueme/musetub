@@ -32,3 +32,7 @@ class ContentListItem(BaseModel):
     quality_score: int
     playback_url: str
     created_at: datetime
+
+
+class StreamResponse(BaseModel):
+    playback_url: str

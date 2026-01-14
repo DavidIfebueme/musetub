@@ -1,11 +1,13 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.ai_agents.services.pricing import compute_suggested_price_per_second_minor_units
 from app.features.ai_agents.services.quality import compute_quality_score
-from app.features.content.schemas import ContentListItem, ContentResponse
-from app.platform.db.models import Content
+from app.features.content.schemas import ContentListItem, ContentResponse, StreamResponse
+from app.platform.db.models import Content, PaymentChannel
 from app.platform.db.session import get_session
 from app.platform.security import get_current_user
 from app.platform.services.gemini import get_or_create_pricing_explanation
@@ -14,12 +16,23 @@ from app.platform.services.ipfs import IPFSClient
 router = APIRouter(prefix="/content")
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+_TICK_STALE_AFTER_SECONDS = 25
+
+
 def get_ipfs_client() -> IPFSClient:
     return IPFSClient()
 
 
 def _forbidden() -> HTTPException:
     return HTTPException(status_code=403, detail="Forbidden")
+
+
+def _payment_required() -> HTTPException:
+    return HTTPException(status_code=402, detail="Payment Required")
 
 
 @router.post("/upload", response_model=ContentResponse)
@@ -180,3 +193,39 @@ async def get_content(
         pricing_explanation=explanation,
         created_at=row.created_at,
     )
+
+
+@router.get("/{content_id}/stream", response_model=StreamResponse)
+async def stream_content(
+    content_id: str,
+    user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    ipfs: IPFSClient = Depends(get_ipfs_client),
+) -> StreamResponse:
+    result = await session.execute(select(Content).where(Content.id == content_id))
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    channel_result = await session.execute(
+        select(PaymentChannel)
+        .where(
+            PaymentChannel.user_id == user.id,
+            PaymentChannel.content_id == row.id,
+            PaymentChannel.status == "active",
+        )
+        .order_by(PaymentChannel.opened_at.desc())
+        .limit(1)
+    )
+    channel = channel_result.scalar_one_or_none()
+    if channel is None:
+        raise _payment_required()
+
+    if channel.last_tick_at is None:
+        raise _payment_required()
+
+    now = _utcnow()
+    if now - channel.last_tick_at > timedelta(seconds=_TICK_STALE_AFTER_SECONDS):
+        raise _payment_required()
+
+    return StreamResponse(playback_url=ipfs.playback_url(row.ipfs_cid))
