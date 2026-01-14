@@ -1,11 +1,19 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(
+            str(Path(__file__).resolve().parents[3] / ".env"),
+            ".env",
+        ),
+        extra="ignore",
+    )
 
-    database_url: str = "postgresql+asyncpg://musetub:change-me@localhost:5433/musetub"
-    redis_url: str = "redis://localhost:6380/0"
+    database_url: str = "postgresql+asyncpg://user:password@localhost:5432/musetub"
+    redis_url: str = "redis://localhost:6379/0"
     ipfs_api_url: str = "http://localhost:5001"
     ipfs_gateway_url: str = "http://localhost:8080/ipfs"
 
@@ -14,7 +22,7 @@ class Settings(BaseSettings):
     gemini_timeout_seconds: float = 10.0
     gemini_max_prompt_chars: int = 2500
 
-    jwt_secret: str = "change-me"
+    jwt_secret: str = "dev-unsafe-change-me"
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 43200
     allowed_origins: str = "http://localhost:3000"
