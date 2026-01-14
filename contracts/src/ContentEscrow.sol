@@ -21,12 +21,14 @@ contract ContentEscrow {
     error ZeroAmount();
     error NothingToWithdraw();
     error TokenTransferFailed();
+    error Unauthorized();
 
     event Streamed(address indexed user, address indexed creator, uint256 amount, uint256 creatorShare, uint256 platformShare);
     event CreatorWithdrawn(address indexed creator, uint256 amount);
     event PlatformWithdrawn(address indexed to, uint256 amount);
 
     address public immutable usdc;
+    address public immutable owner;
     address public platformWithdrawAddress;
 
     mapping(address => uint256) public creatorBalances;
@@ -35,10 +37,12 @@ contract ContentEscrow {
     constructor(address usdc_, address platformWithdrawAddress_) {
         if (usdc_ == address(0) || platformWithdrawAddress_ == address(0)) revert ZeroAddress();
         usdc = usdc_;
+        owner = msg.sender;
         platformWithdrawAddress = platformWithdrawAddress_;
     }
 
     function setPlatformWithdrawAddress(address newPlatformWithdrawAddress) external {
+        if (msg.sender != owner) revert Unauthorized();
         if (newPlatformWithdrawAddress == address(0)) revert ZeroAddress();
         platformWithdrawAddress = newPlatformWithdrawAddress;
     }

@@ -40,7 +40,7 @@ class CircleWalletsClient:
         request = developer_controlled_wallets.CreateWalletRequest.from_dict(
             {
                 "accountType": "EOA",
-                "blockchains": ["ARC-TESTNET"],
+                "blockchains": [settings.circle_blockchain],
                 "count": 1,
                 "walletSetId": settings.circle_wallet_set_id,
             }

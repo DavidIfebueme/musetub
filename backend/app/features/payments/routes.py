@@ -126,14 +126,14 @@ async def _settle_unpaid_amount(
 
         signature = await circle.sign_typed_data(
             wallet_id=viewer.circle_wallet_id,
-            blockchain="ARC-TESTNET",
+            blockchain=settings.circle_blockchain,
             typed_data=typed_data,
             memo=f"musetub:settle:{channel.id}",
         )
 
         tx_id = await circle.create_contract_execution_transaction(
             wallet_id=viewer.circle_wallet_id,
-            blockchain="ARC-TESTNET",
+            blockchain=settings.circle_blockchain,
             contract_address=chain.config.escrow_address,
             abi_function_signature="streamWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)",
             abi_parameters=[

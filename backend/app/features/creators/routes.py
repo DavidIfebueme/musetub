@@ -220,7 +220,7 @@ async def withdraw_creator(
         chain = ChainClient.from_settings()
         tx_id = await circle.create_contract_execution_transaction(
             wallet_id=user.circle_wallet_id,
-            blockchain="ARC-TESTNET",
+            blockchain=settings.circle_blockchain,
             contract_address=chain.config.escrow_address,
             abi_function_signature="withdrawCreator()",
             abi_parameters=[],

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
             str(Path(__file__).resolve().parents[3] / ".env"),
             ".env",
         ),
+        env_ignore_empty=True,
         extra="ignore",
     )
 
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
     circle_entity_secret: str | None = None
     circle_wallet_set_id: str | None = None
     circle_environment: str = "sandbox"
+    circle_blockchain: str = "ARC-TESTNET"
 
     arc_rpc_url: str | None = None
     arc_chain_id: int | None = None
