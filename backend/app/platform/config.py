@@ -24,5 +24,13 @@ class Settings(BaseSettings):
     circle_wallet_set_id: str | None = None
     circle_environment: str = "sandbox"
 
+    arc_rpc_url: str | None = None
+    arc_chain_id: int | None = None
+    usdc_address: str | None = None
+    escrow_address: str | None = None
+
+    usdc_name: str = "USD Coin"
+    usdc_version: str = "2"
+
 
 settings = Settings()
