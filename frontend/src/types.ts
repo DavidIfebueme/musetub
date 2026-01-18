@@ -56,3 +56,7 @@ export type CreatorDashboardResponse = {
 export type WithdrawResponse = {
   tx_id: string;
 };
+
+export type StreamResponse = {
+  playback_url: string;
+};

@@ -3,6 +3,7 @@ import { Activity, ShieldCheck } from 'lucide-react';
 
 import { ContentItem } from '../types';
 import { PaymentStreamSession } from '../services/streamSession';
+import { getStreamPlaybackUrl, X402PaymentRequiredError, X402PaymentRequiredBody } from '../services/stream';
 
 export default function VideoPlayer({
   token,
@@ -16,7 +17,13 @@ export default function VideoPlayer({
   const [isRunning, setIsRunning] = useState(false);
   const [sessionMinor, setSessionMinor] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [paywall, setPaywall] = useState<X402PaymentRequiredBody | null>(null);
+  const [paymentSignature, setPaymentSignature] = useState('');
+  const [paymentResponse, setPaymentResponse] = useState<string | null>(null);
+  const [unlockBusy, setUnlockBusy] = useState(false);
   const sessionRef = useRef<PaymentStreamSession | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const rateLabel = useMemo(() => String(item.price_per_second), [item.price_per_second]);
 
@@ -36,9 +43,45 @@ export default function VideoPlayer({
     };
   }, [token, item.id, item.price_per_second]);
 
+  useEffect(() => {
+    setStreamUrl(null);
+    setPaywall(null);
+    setPaymentResponse(null);
+    setPaymentSignature('');
+  }, [item.id]);
+
+  async function ensureUnlocked(): Promise<boolean> {
+    if (unlockBusy) return false;
+
+    setUnlockBusy(true);
+    setError(null);
+    setPaywall(null);
+
+    try {
+      const res = await getStreamPlaybackUrl(token, item.id, paymentSignature.trim() ? paymentSignature.trim() : undefined);
+      setStreamUrl(res.playbackUrl);
+      setPaymentResponse(res.paymentResponseHeader ?? null);
+      return true;
+    } catch (e) {
+      if (e instanceof X402PaymentRequiredError) {
+        setPaywall(e.body);
+        return false;
+      }
+      setError(String(e));
+      return false;
+    } finally {
+      setUnlockBusy(false);
+    }
+  }
+
   async function start() {
     setError(null);
     try {
+      const ok = streamUrl ? true : await ensureUnlocked();
+      if (!ok) {
+        setIsRunning(false);
+        return;
+      }
       await sessionRef.current?.start();
       setIsRunning(true);
     } catch (e) {
@@ -63,11 +106,84 @@ export default function VideoPlayer({
     }
   }
 
+  const accept = paywall?.accepts?.[0];
+
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
       <div className="max-w-5xl w-full glass rounded-[2.5rem] overflow-hidden shadow-2xl border-emerald-500/10">
         <div className="relative aspect-video bg-zinc-950 group">
-          <video className="w-full h-full object-contain" src={item.playback_url} controls onPlay={start} onPause={stop} />
+          {streamUrl ? (
+            <video
+              ref={videoRef}
+              className="w-full h-full object-contain"
+              src={streamUrl}
+              controls
+              onPlay={start}
+              onPause={stop}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-8">
+              <div className="w-full max-w-2xl glass rounded-3xl p-8 border border-zinc-800">
+                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">x402</div>
+                <div className="mt-1 text-2xl font-black italic">Payment required to stream</div>
+
+                {accept ? (
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="glass rounded-2xl p-4 border-zinc-800">
+                      <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Amount</div>
+                      <div className="mono text-white font-bold break-all">{accept.amount}</div>
+                    </div>
+                    <div className="glass rounded-2xl p-4 border-zinc-800">
+                      <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Network</div>
+                      <div className="mono text-white font-bold break-all">{accept.network}</div>
+                    </div>
+                    <div className="glass rounded-2xl p-4 border-zinc-800 md:col-span-2">
+                      <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Pay to</div>
+                      <div className="mono text-white font-bold break-all">{accept.payTo}</div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-6 space-y-3">
+                  <textarea
+                    value={paymentSignature}
+                    onChange={(e) => setPaymentSignature(e.target.value)}
+                    placeholder="Paste Payment-Signature (base64 JSON)"
+                    className="w-full h-28 px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-zinc-200 mono text-xs"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        const ok = await ensureUnlocked();
+                        if (ok) {
+                          await start();
+                          await videoRef.current?.play().catch(() => undefined);
+                        }
+                      }}
+                      disabled={unlockBusy}
+                      className="flex-1 py-4 bg-emerald-500 text-black font-black rounded-2xl hover:bg-emerald-400 transition-all disabled:opacity-50"
+                    >
+                      {unlockBusy ? '...' : 'UNLOCK'}
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="px-6 py-4 bg-zinc-900 rounded-2xl text-zinc-400 hover:text-red-400 transition-colors font-black"
+                    >
+                      CLOSE
+                    </button>
+                  </div>
+                </div>
+
+                {paymentResponse ? (
+                  <div className="mt-4 text-[10px] text-zinc-500 font-black uppercase tracking-widest break-all">
+                    Payment-Response: {paymentResponse}
+                  </div>
+                ) : null}
+
+                {error ? <div className="mt-3 text-red-400 text-sm font-bold break-all">{error}</div> : null}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-8 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -77,7 +193,10 @@ export default function VideoPlayer({
               <Activity size={14} className="text-emerald-500" />
               IPFS <span className="text-zinc-300 mono">{item.id.slice(0, 10)}...</span>
             </div>
-            {error ? <div className="text-red-400 text-sm font-bold">{error}</div> : null}
+            {streamUrl ? null : paywall ? (
+              <div className="text-emerald-400 text-xs font-black uppercase tracking-widest">Awaiting payment signature…</div>
+            ) : null}
+            {error ? <div className="text-red-400 text-sm font-bold break-all">{error}</div> : null}
           </div>
 
           <div className="flex gap-6">
