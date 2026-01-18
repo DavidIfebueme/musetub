@@ -5,6 +5,10 @@ export async function listContent(): Promise<ContentItem[]> {
   return apiRequest<ContentItem[]>('/content');
 }
 
+export async function getContent(contentId: string): Promise<ContentResponse> {
+  return apiRequest<ContentResponse>(`/content/${encodeURIComponent(contentId)}`);
+}
+
 export async function uploadContent(
   token: string,
   args: {

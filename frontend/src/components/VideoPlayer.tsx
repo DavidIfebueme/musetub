@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, ShieldCheck } from 'lucide-react';
 
-import { ContentItem } from '../types';
+import { ContentItem, ContentResponse } from '../types';
+import { getContent } from '../services/content';
 import { PaymentStreamSession } from '../services/streamSession';
 import {
   autoPayStream,
@@ -27,6 +28,8 @@ export default function VideoPlayer({
   const [paywall, setPaywall] = useState<X402PaymentRequiredBody | null>(null);
   const [paymentResponse, setPaymentResponse] = useState<string | null>(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
+  const [contentDetails, setContentDetails] = useState<ContentResponse | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const sessionRef = useRef<PaymentStreamSession | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -52,6 +55,34 @@ export default function VideoPlayer({
     setStreamUrl(null);
     setPaywall(null);
     setPaymentResponse(null);
+    setContentDetails(null);
+    setDetailsError(null);
+  }, [item.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDetails() {
+      const details = await getContent(item.id);
+      if (!cancelled) {
+        setContentDetails(details);
+      }
+    }
+
+    loadDetails().catch((e) => {
+      if (!cancelled) {
+        setDetailsError(String(e));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id]);
+
+  useEffect(() => {
+    void ensureUnlocked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
   async function ensureUnlocked(): Promise<boolean> {
@@ -132,6 +163,7 @@ export default function VideoPlayer({
   }
 
   const accept = paywall?.accepts?.[0];
+  const pricingExplanation = contentDetails?.pricing_explanation ?? null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
@@ -151,6 +183,17 @@ export default function VideoPlayer({
               <div className="w-full max-w-2xl glass rounded-3xl p-8 border border-zinc-800">
                 <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">x402</div>
                 <div className="mt-1 text-2xl font-black italic">Payment required to stream</div>
+
+                {pricingExplanation ? (
+                  <div className="mt-4 glass rounded-2xl p-4 border-zinc-800">
+                    <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Why this price</div>
+                    <div className="mt-2 text-zinc-200 text-sm font-semibold leading-relaxed">{pricingExplanation}</div>
+                  </div>
+                ) : detailsError ? (
+                  <div className="mt-4 text-[10px] text-zinc-600 font-black uppercase tracking-widest break-all">
+                    Pricing details unavailable: {detailsError}
+                  </div>
+                ) : null}
 
                 {accept ? (
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">

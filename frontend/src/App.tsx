@@ -261,6 +261,49 @@ export default function App() {
               </p>
             </header>
 
+            <section className="glass rounded-[3rem] p-10 border-zinc-800">
+              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Comparison</div>
+              <h3 className="mt-2 text-3xl font-black italic">MuseTub vs YouTube / Spotify</h3>
+              <div className="mt-6 overflow-x-auto">
+                <table className="w-full text-left border-separate border-spacing-y-3">
+                  <thead>
+                    <tr className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">
+                      <th className="pr-6">Feature</th>
+                      <th className="pr-6">MuseTub</th>
+                      <th className="pr-6">YouTube</th>
+                      <th>Spotify</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm font-semibold">
+                    <tr className="glass rounded-2xl">
+                      <td className="py-4 pr-6 text-zinc-300">Pay only while watching</td>
+                      <td className="py-4 pr-6 text-emerald-400">Yes</td>
+                      <td className="py-4 pr-6 text-zinc-400">No</td>
+                      <td className="py-4 text-zinc-400">No</td>
+                    </tr>
+                    <tr className="glass rounded-2xl">
+                      <td className="py-4 pr-6 text-zinc-300">Pricing clarity</td>
+                      <td className="py-4 pr-6 text-emerald-400">Upfront per-second rate</td>
+                      <td className="py-4 pr-6 text-zinc-400">Varies (ads / subs)</td>
+                      <td className="py-4 text-zinc-400">Varies (per-stream)</td>
+                    </tr>
+                    <tr className="glass rounded-2xl">
+                      <td className="py-4 pr-6 text-zinc-300">Creator share</td>
+                      <td className="py-4 pr-6 text-emerald-400">90% of gross</td>
+                      <td className="py-4 pr-6 text-zinc-400">Varies</td>
+                      <td className="py-4 text-zinc-400">Varies</td>
+                    </tr>
+                    <tr className="glass rounded-2xl">
+                      <td className="py-4 pr-6 text-zinc-300">Micropayments</td>
+                      <td className="py-4 pr-6 text-emerald-400">USDC streaming ticks</td>
+                      <td className="py-4 pr-6 text-zinc-400">No</td>
+                      <td className="py-4 text-zinc-400">No</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {content.map((item) => (
                 <div
