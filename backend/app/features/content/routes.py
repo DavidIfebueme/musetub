@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,6 +78,29 @@ async def _require_user_for_stream(request: Request, session: AsyncSession):
         raise _unauthorized()
 
     return user
+
+
+def _extract_access_token(request: Request) -> str:
+    header = request.headers.get("authorization")
+    if header and header.lower().startswith("bearer "):
+        token = header.split(" ", 1)[1].strip()
+        if token:
+            return token
+    token = request.query_params.get("access_token")
+    if token:
+        return token
+    raise _unauthorized()
+
+
+async def _pay_via_sidecar(*, sidecar_url: str, content_id: str, access_token: str) -> dict:
+    timeout = httpx.Timeout(30.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.post(
+            f"{sidecar_url.rstrip('/')}/pay",
+            json={"contentId": content_id, "accessToken": access_token},
+        )
+        resp.raise_for_status()
+        return resp.json()
 
 
 @router.post("/upload", response_model=ContentResponse)
@@ -354,3 +378,33 @@ async def stream_content(
     await session.commit()
 
     return StreamResponse(playback_url=ipfs.playback_url(row.ipfs_cid))
+
+
+@router.post("/{content_id}/pay", response_model=StreamResponse)
+async def pay_stream_content(
+    content_id: str,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> StreamResponse:
+    await _require_user_for_stream(request, session)
+    access_token = _extract_access_token(request)
+
+    if not settings.x402_gateway_sidecar_url:
+        raise _service_unavailable("x402 gateway sidecar not configured")
+
+    data = await _pay_via_sidecar(
+        sidecar_url=settings.x402_gateway_sidecar_url,
+        content_id=content_id,
+        access_token=access_token,
+    )
+
+    playback_url = data.get("playback_url")
+    if isinstance(data.get("transaction"), str) and data["transaction"]:
+        response.headers["Payment-Response"] = encode_payment_response(
+            {"transaction": data["transaction"], "payer": data.get("payer") or "unknown"}
+        )
+
+    if not isinstance(playback_url, str) or not playback_url:
+        raise HTTPException(status_code=502, detail="Invalid sidecar response")
+    return StreamResponse(playback_url=playback_url)

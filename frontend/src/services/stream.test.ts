@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { getStreamPlaybackUrl, X402PaymentRequiredError } from './stream';
+import { autoPayStream, getStreamPlaybackUrl, X402PaymentRequiredError } from './stream';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -25,9 +25,12 @@ describe('getStreamPlaybackUrl', () => {
       new Response(
         JSON.stringify({
           x402Version: 2,
-          resource: 'http://localhost/resource',
-          description: 'Stream',
-          mimeType: 'application/json',
+          error: 'Payment required',
+          resource: {
+            url: 'http://localhost/resource',
+            description: 'Stream',
+            mimeType: 'application/json',
+          },
           accepts: [
             {
               scheme: 'exact',
@@ -46,5 +49,17 @@ describe('getStreamPlaybackUrl', () => {
     );
 
     await expect(getStreamPlaybackUrl('t', 'c')).rejects.toBeInstanceOf(X402PaymentRequiredError);
+  });
+
+  it('autoPayStream returns playback url on 200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ playback_url: 'http://x/z' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const resp = await autoPayStream('t', 'c');
+    expect(resp.playbackUrl).toBe('http://x/z');
   });
 });

@@ -3,7 +3,13 @@ import { Activity, ShieldCheck } from 'lucide-react';
 
 import { ContentItem } from '../types';
 import { PaymentStreamSession } from '../services/streamSession';
-import { getStreamPlaybackUrl, X402PaymentRequiredError, X402PaymentRequiredBody } from '../services/stream';
+import {
+  autoPayStream,
+  createPaymentSignature,
+  getStreamPlaybackUrl,
+  X402PaymentRequiredBody,
+  X402PaymentRequiredError,
+} from '../services/stream';
 
 export default function VideoPlayer({
   token,
@@ -19,7 +25,6 @@ export default function VideoPlayer({
   const [error, setError] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [paywall, setPaywall] = useState<X402PaymentRequiredBody | null>(null);
-  const [paymentSignature, setPaymentSignature] = useState('');
   const [paymentResponse, setPaymentResponse] = useState<string | null>(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
   const sessionRef = useRef<PaymentStreamSession | null>(null);
@@ -47,7 +52,6 @@ export default function VideoPlayer({
     setStreamUrl(null);
     setPaywall(null);
     setPaymentResponse(null);
-    setPaymentSignature('');
   }, [item.id]);
 
   async function ensureUnlocked(): Promise<boolean> {
@@ -58,7 +62,7 @@ export default function VideoPlayer({
     setPaywall(null);
 
     try {
-      const res = await getStreamPlaybackUrl(token, item.id, paymentSignature.trim() ? paymentSignature.trim() : undefined);
+      const res = await getStreamPlaybackUrl(token, item.id);
       setStreamUrl(res.playbackUrl);
       setPaymentResponse(res.paymentResponseHeader ?? null);
       return true;
@@ -72,6 +76,27 @@ export default function VideoPlayer({
     } finally {
       setUnlockBusy(false);
     }
+  }
+
+  async function payAndUnlock(): Promise<void> {
+    if (unlockBusy) return;
+    setError(null);
+
+    const accept = paywall?.accepts?.[0];
+    if (accept) {
+      try {
+        const signature = createPaymentSignature(accept);
+        const res = await getStreamPlaybackUrl(token, item.id, signature);
+        setStreamUrl(res.playbackUrl);
+        setPaymentResponse(res.paymentResponseHeader ?? null);
+        return;
+      } catch {
+      }
+    }
+
+    const res = await autoPayStream(token, item.id);
+    setStreamUrl(res.playbackUrl);
+    setPaymentResponse(res.paymentResponseHeader ?? null);
   }
 
   async function start() {
@@ -145,25 +170,21 @@ export default function VideoPlayer({
                 ) : null}
 
                 <div className="mt-6 space-y-3">
-                  <textarea
-                    value={paymentSignature}
-                    onChange={(e) => setPaymentSignature(e.target.value)}
-                    placeholder="Paste Payment-Signature (base64 JSON)"
-                    className="w-full h-28 px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-zinc-200 mono text-xs"
-                  />
                   <div className="flex gap-3">
                     <button
                       onClick={async () => {
-                        const ok = await ensureUnlocked();
-                        if (ok) {
+                        try {
+                          await payAndUnlock();
                           await start();
                           await videoRef.current?.play().catch(() => undefined);
+                        } catch (e) {
+                          setError(String(e));
                         }
                       }}
                       disabled={unlockBusy}
                       className="flex-1 py-4 bg-emerald-500 text-black font-black rounded-2xl hover:bg-emerald-400 transition-all disabled:opacity-50"
                     >
-                      {unlockBusy ? '...' : 'UNLOCK'}
+                      {unlockBusy ? '...' : 'PAY & PLAY'}
                     </button>
                     <button
                       onClick={onClose}
