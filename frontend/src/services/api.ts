@@ -9,6 +9,10 @@ export class ApiError extends Error {
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api/v1';
 
+export function getApiBaseUrl(): string {
+  return baseUrl;
+}
+
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${baseUrl}${path}`;
   const resp = await fetch(url, init);

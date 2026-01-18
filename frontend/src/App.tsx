@@ -3,6 +3,7 @@ import { LogOut, Wallet, Zap } from 'lucide-react';
 
 import SettlementVisualizer from './components/SettlementVisualizer';
 import VideoPlayer from './components/VideoPlayer';
+import CreatorStudio from './components/CreatorStudio';
 import { ContentItem } from './types';
 import { clearAuthToken, getMe, getStoredAuthToken, Me, login, register } from './services/auth';
 import { listContent } from './services/content';
@@ -63,6 +64,11 @@ export default function App() {
       cancelled = true;
     };
   }, [token]);
+
+  async function refreshContent() {
+    const items = await listContent();
+    setContent(items);
+  }
 
   const walletLabel = useMemo(() => {
     if (!me?.wallet_address) return null;
@@ -289,7 +295,11 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <div className="glass p-10 rounded-3xl border-zinc-800">Creator studio coming next.</div>
+          me.is_creator ? (
+            <CreatorStudio token={token} onUploaded={() => refreshContent().catch(() => undefined)} />
+          ) : (
+            <div className="glass p-10 rounded-3xl border-zinc-800">This account is not a creator.</div>
+          )
         )}
       </main>
 
