@@ -31,7 +31,11 @@ services:
     environment:
       CLOUDSMITH_TOKEN: ${CLOUDSMITH_TOKEN}
       GATEWAY_URL: ${GATEWAY_URL}
+      PRIVATE_KEY: ${PRIVATE_KEY}
+      API_BASE_URL: ${API_BASE_URL:-http://host.docker.internal:8000/api/v1}
       PORT: "4010"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./gateway-sidecar:/app
     command: ["sh", "-lc", "npm install && npm run dev"]
