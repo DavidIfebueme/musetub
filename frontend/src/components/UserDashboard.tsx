@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock, ReceiptText } from 'lucide-react';
+import { Clock, Copy, ReceiptText } from 'lucide-react';
 
-import { UserHistoryItem, UserSpendingResponse } from '../types';
+import { FundTestnetResponse, UserHistoryItem, UserSpendingResponse } from '../types';
 import { getMyHistory, getMySpending } from '../services/users';
+import { fundTestnet } from '../services/wallets';
 
 export default function UserDashboard({ token }: { token: string }) {
   const [spending, setSpending] = useState<UserSpendingResponse | null>(null);
   const [history, setHistory] = useState<UserHistoryItem[]>([]);
+  const [funding, setFunding] = useState<FundTestnetResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -14,10 +16,11 @@ export default function UserDashboard({ token }: { token: string }) {
 
     async function load() {
       setError(null);
-      const [s, h] = await Promise.all([getMySpending(token), getMyHistory(token)]);
+      const [s, h, f] = await Promise.all([getMySpending(token), getMyHistory(token), fundTestnet(token)]);
       if (!cancelled) {
         setSpending(s);
         setHistory(h);
+        setFunding(f);
       }
     }
 
@@ -46,6 +49,47 @@ export default function UserDashboard({ token }: { token: string }) {
       </header>
 
       {error ? <div className="glass rounded-3xl p-6 border-zinc-800 text-red-400 font-bold break-all">{error}</div> : null}
+
+      {funding ? (
+        <div className="glass rounded-[2.5rem] p-10 border-zinc-800">
+          <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Wallet</div>
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="glass rounded-2xl p-6 border-zinc-800">
+              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Arc address</div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="mono text-xs font-bold text-zinc-200 break-all">{funding.wallet_address || '—'}</div>
+                <button
+                  className="px-3 py-2 bg-zinc-900 rounded-xl text-zinc-300 hover:text-emerald-400 transition-colors font-black text-xs"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(funding.wallet_address || '');
+                    } catch {
+                      setError('Copy failed');
+                    }
+                  }}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Copy size={14} />
+                    COPY
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div className="glass rounded-2xl p-6 border-zinc-800">
+              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Funding</div>
+              <div className="mt-2 text-zinc-300 font-bold">{funding.instructions}</div>
+              <a
+                className="mt-3 inline-block text-emerald-400 font-black text-xs tracking-widest uppercase"
+                href={funding.docs_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Docs
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass rounded-3xl p-8 border-zinc-800">

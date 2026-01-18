@@ -82,3 +82,9 @@ export type UserHistoryItem = {
   opened_at: string;
   closed_at: string | null;
 };
+
+export type FundTestnetResponse = {
+  wallet_address: string;
+  instructions: string;
+  docs_url: string;
+};
