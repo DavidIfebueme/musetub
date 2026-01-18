@@ -1,17 +1,28 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.responses import JSONResponse
+from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.ai_agents.services.pricing import compute_suggested_price_per_second_minor_units
 from app.features.ai_agents.services.quality import compute_quality_score
 from app.features.content.schemas import ContentListItem, ContentResponse, StreamResponse
-from app.platform.db.models import Content, PaymentChannel
+from app.platform.config import settings
+from app.platform.db.models import Content, PaymentChannel, Settlement, User
 from app.platform.db.session import get_session
 from app.platform.security import get_current_user
 from app.platform.services.gemini import get_or_create_pricing_explanation
 from app.platform.services.ipfs import IPFSClient
+from app.platform.services.x402 import (
+    build_402_body,
+    build_exact_accept,
+    decode_payment_signature,
+    encode_payment_response,
+    verify_and_settle_simulated,
+    verify_and_settle_via_sidecar,
+)
 
 router = APIRouter(prefix="/content")
 
@@ -20,7 +31,8 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-_TICK_STALE_AFTER_SECONDS = 25
+_X402_CHUNK_SECONDS = 10
+_ARC_TESTNET_USDC_ADDRESS = "0x3600000000000000000000000000000000000000"
 
 
 def get_ipfs_client() -> IPFSClient:
@@ -31,8 +43,40 @@ def _forbidden() -> HTTPException:
     return HTTPException(status_code=403, detail="Forbidden")
 
 
-def _payment_required() -> HTTPException:
-    return HTTPException(status_code=402, detail="Payment Required")
+def _service_unavailable(message: str) -> HTTPException:
+    return HTTPException(status_code=503, detail=message)
+
+
+def _unauthorized() -> HTTPException:
+    return HTTPException(status_code=401, detail="Unauthorized")
+
+
+async def _require_user_for_stream(request: Request, session: AsyncSession):
+    header = request.headers.get("authorization")
+    token: str | None = None
+    if header and header.lower().startswith("bearer "):
+        token = header.split(" ", 1)[1].strip()
+    else:
+        token = request.query_params.get("access_token")
+
+    if not token:
+        raise _unauthorized()
+
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except JWTError as exc:
+        raise _unauthorized() from exc
+
+    subject = payload.get("sub")
+    if not isinstance(subject, str) or not subject:
+        raise _unauthorized()
+
+    result = await session.execute(select(User).where(User.id == subject))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise _unauthorized()
+
+    return user
 
 
 @router.post("/upload", response_model=ContentResponse)
@@ -198,14 +242,79 @@ async def get_content(
 @router.get("/{content_id}/stream", response_model=StreamResponse)
 async def stream_content(
     content_id: str,
-    user=Depends(get_current_user),
+    request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     ipfs: IPFSClient = Depends(get_ipfs_client),
 ) -> StreamResponse:
+    user = await _require_user_for_stream(request, session)
     result = await session.execute(select(Content).where(Content.id == content_id))
     row = result.scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Not found")
+
+    creator_result = await session.execute(select(User).where(User.id == row.creator_id))
+    creator = creator_result.scalar_one_or_none()
+    seller_address = getattr(creator, "wallet_address", None) or settings.x402_default_seller_address
+    if not seller_address:
+        raise _service_unavailable("Seller address not configured")
+
+    asset = settings.usdc_address or _ARC_TESTNET_USDC_ADDRESS
+    amount = int(row.price_per_second) * _X402_CHUNK_SECONDS
+    accepts = [
+        build_exact_accept(
+            network=settings.x402_network,
+            asset=asset,
+            amount=amount,
+            pay_to=seller_address,
+            max_timeout_seconds=settings.x402_max_timeout_seconds,
+            extra={"name": settings.usdc_name, "version": settings.usdc_version},
+        )
+    ]
+
+    payment_header = request.headers.get("payment-signature")
+    if not payment_header:
+        body = build_402_body(
+            url=str(request.url),
+            description=f"Stream {row.title} ({_X402_CHUNK_SECONDS}s)",
+            mime_type="application/json",
+            accepts=accepts,
+        )
+        return JSONResponse(status_code=402, content=body)
+
+    try:
+        payment_payload = decode_payment_signature(payment_header)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    accepted = payment_payload.get("accepted")
+    if not isinstance(accepted, dict):
+        raise HTTPException(status_code=400, detail="Missing accepted requirements")
+
+    if accepted.get("amount") != str(amount):
+        raise HTTPException(status_code=400, detail="Accepted amount mismatch")
+
+    if accepted.get("payTo") != seller_address:
+        raise HTTPException(status_code=400, detail="Accepted payTo mismatch")
+
+    if accepted.get("network") != settings.x402_network:
+        raise HTTPException(status_code=400, detail="Accepted network mismatch")
+
+    if accepted.get("asset") != asset:
+        raise HTTPException(status_code=400, detail="Accepted asset mismatch")
+
+    if settings.x402_gateway_sidecar_url:
+        settlement = await verify_and_settle_via_sidecar(
+            sidecar_url=settings.x402_gateway_sidecar_url,
+            payment_payload=payment_payload,
+            requirements=accepted,
+        )
+    else:
+        settlement = await verify_and_settle_simulated(payment_payload=payment_payload)
+
+    response.headers["Payment-Response"] = encode_payment_response(
+        {"transaction": settlement.transaction, "payer": settlement.payer}
+    )
 
     channel_result = await session.execute(
         select(PaymentChannel)
@@ -219,13 +328,29 @@ async def stream_content(
     )
     channel = channel_result.scalar_one_or_none()
     if channel is None:
-        raise _payment_required()
-
-    if channel.last_tick_at is None:
-        raise _payment_required()
+        channel = PaymentChannel(
+            user_id=user.id,
+            content_id=row.id,
+            price_per_second_locked=row.price_per_second,
+            status="active",
+        )
+        session.add(channel)
+        await session.flush()
 
     now = _utcnow()
-    if now - channel.last_tick_at > timedelta(seconds=_TICK_STALE_AFTER_SECONDS):
-        raise _payment_required()
+    channel.total_seconds_streamed = int(channel.total_seconds_streamed) + _X402_CHUNK_SECONDS
+    channel.total_amount_owed = int(channel.total_amount_owed) + amount
+    channel.total_amount_settled = int(channel.total_amount_settled) + amount
+    channel.last_tick_at = now
+    channel.last_settlement_at = now
+
+    session.add(
+        Settlement(
+            channel_id=channel.id,
+            amount=amount,
+            tx_hash=settlement.transaction,
+        )
+    )
+    await session.commit()
 
     return StreamResponse(playback_url=ipfs.playback_url(row.ipfs_cid))

@@ -24,6 +24,20 @@ services:
     volumes:
       - ipfs-data:/data/ipfs
 
+  gateway-sidecar:
+    image: node:20
+    container_name: musetub-gateway-sidecar
+    working_dir: /app
+    environment:
+      CLOUDSMITH_TOKEN: ${CLOUDSMITH_TOKEN}
+      GATEWAY_URL: ${GATEWAY_URL}
+      PORT: "4010"
+    volumes:
+      - ./gateway-sidecar:/app
+    command: ["sh", "-lc", "npm install && npm run dev"]
+    ports:
+      - "4010:4010"
+
 volumes:
   postgres-data:
   ipfs-data:

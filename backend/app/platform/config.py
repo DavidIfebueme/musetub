@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     usdc_address: str | None = None
     escrow_address: str | None = None
 
+    x402_network: str = "eip155:5042002"
+    x402_max_timeout_seconds: int = 345600
+    x402_gateway_sidecar_url: str | None = None
+    x402_default_seller_address: str | None = None
+
     usdc_name: str = "USD Coin"
     usdc_version: str = "2"
 
