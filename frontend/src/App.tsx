@@ -4,11 +4,12 @@ import { LogOut, Wallet, Zap } from 'lucide-react';
 import SettlementVisualizer from './components/SettlementVisualizer';
 import VideoPlayer from './components/VideoPlayer';
 import CreatorStudio from './components/CreatorStudio';
+import UserDashboard from './components/UserDashboard';
 import { ContentItem } from './types';
 import { clearAuthToken, getMe, getStoredAuthToken, Me, login, register } from './services/auth';
 import { listContent } from './services/content';
 
-type View = 'home' | 'creator';
+type View = 'home' | 'user' | 'creator';
 
 export default function App() {
   const [token, setToken] = useState<string | null>(getStoredAuthToken());
@@ -206,6 +207,16 @@ export default function App() {
           >
             MARKET
           </button>
+          <button
+            onClick={() => setView('user')}
+            className={
+              view === 'user'
+                ? 'text-emerald-400 underline decoration-2 underline-offset-8'
+                : 'text-zinc-500 hover:text-white transition-colors'
+            }
+          >
+            DASHBOARD
+          </button>
           {me.is_creator ? (
             <button
               onClick={() => setView('creator')}
@@ -294,12 +305,12 @@ export default function App() {
               ))}
             </div>
           </div>
+        ) : view === 'user' ? (
+          <UserDashboard token={token} />
+        ) : me.is_creator ? (
+          <CreatorStudio token={token} onUploaded={() => refreshContent().catch(() => undefined)} />
         ) : (
-          me.is_creator ? (
-            <CreatorStudio token={token} onUploaded={() => refreshContent().catch(() => undefined)} />
-          ) : (
-            <div className="glass p-10 rounded-3xl border-zinc-800">This account is not a creator.</div>
-          )
+          <div className="glass p-10 rounded-3xl border-zinc-800">This account is not a creator.</div>
         )}
       </main>
 

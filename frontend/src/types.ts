@@ -60,3 +60,25 @@ export type WithdrawResponse = {
 export type StreamResponse = {
   playback_url: string;
 };
+
+export type UserSpendingResponse = {
+  total_seconds_streamed: number;
+  total_amount_owed: number;
+  total_amount_settled: number;
+};
+
+export type UserHistoryItem = {
+  channel_id: string;
+  content_id: string;
+  content_title: string;
+  creator_id: string;
+  status: string;
+  price_per_second_locked: number;
+  total_seconds_streamed: number;
+  total_amount_owed: number;
+  total_amount_settled: number;
+  last_tick_at: string | null;
+  last_settlement_at: string | null;
+  opened_at: string;
+  closed_at: string | null;
+};
