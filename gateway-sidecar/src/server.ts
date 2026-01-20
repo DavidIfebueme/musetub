@@ -5,11 +5,8 @@ import { BatchFacilitatorClient } from '@circlefin/x402-batching/server';
 import { GatewayClient } from '@circlefin/x402-batching/client';
 
 const gatewayUrl = process.env.GATEWAY_URL;
-if (!gatewayUrl) {
-  throw new Error('GATEWAY_URL is required');
-}
 
-const client = new BatchFacilitatorClient({ url: gatewayUrl });
+const client = gatewayUrl ? new BatchFacilitatorClient({ url: gatewayUrl }) : new BatchFacilitatorClient();
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:8000/api/v1';
 const privateKey = process.env.PRIVATE_KEY as `0x${string}` | undefined;
