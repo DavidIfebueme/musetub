@@ -28,10 +28,9 @@ services:
     image: node:20
     container_name: musetub-gateway-sidecar
     working_dir: /app
+    env_file:
+      - ./backend/.env
     environment:
-      CLOUDSMITH_TOKEN: ${CLOUDSMITH_TOKEN}
-      GATEWAY_URL: ${GATEWAY_URL}
-      PRIVATE_KEY: ${PRIVATE_KEY}
       API_BASE_URL: ${API_BASE_URL:-http://host.docker.internal:8000/api/v1}
       PORT: "4010"
     extra_hosts:
