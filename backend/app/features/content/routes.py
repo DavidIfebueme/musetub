@@ -95,12 +95,17 @@ def _extract_access_token(request: Request) -> str:
 async def _pay_via_sidecar(*, sidecar_url: str, content_id: str, access_token: str) -> dict:
     timeout = httpx.Timeout(30.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(
-            f"{sidecar_url.rstrip('/')}/pay",
-            json={"contentId": content_id, "accessToken": access_token},
-        )
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = await client.post(
+                f"{sidecar_url.rstrip('/')}/pay",
+                json={"contentId": content_id, "accessToken": access_token},
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.RequestError as exc:
+            raise _service_unavailable(f"x402 gateway sidecar unreachable at {sidecar_url}") from exc
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=502, detail="x402 gateway sidecar error") from exc
 
 
 @router.post("/upload", response_model=ContentResponse)
@@ -328,11 +333,18 @@ async def stream_content(
         raise HTTPException(status_code=400, detail="Accepted asset mismatch")
 
     if settings.x402_gateway_sidecar_url:
-        settlement = await verify_and_settle_via_sidecar(
-            sidecar_url=settings.x402_gateway_sidecar_url,
-            payment_payload=payment_payload,
-            requirements=accepted,
-        )
+        try:
+            settlement = await verify_and_settle_via_sidecar(
+                sidecar_url=settings.x402_gateway_sidecar_url,
+                payment_payload=payment_payload,
+                requirements=accepted,
+            )
+        except httpx.RequestError as exc:
+            raise _service_unavailable(
+                f"x402 gateway sidecar unreachable at {settings.x402_gateway_sidecar_url}"
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=502, detail="x402 gateway sidecar error") from exc
     else:
         settlement = await verify_and_settle_simulated(payment_payload=payment_payload)
 
