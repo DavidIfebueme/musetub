@@ -1,9 +1,11 @@
 from fastapi import HTTPException
+import secrets
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.auth.schemas import TokenResponse
 from app.platform.db.models import User
+from app.platform.config import settings
 from app.platform.security import create_access_token, hash_password, verify_password
 from app.platform.services.circle_wallets import CircleWalletsClient
 
@@ -27,14 +29,25 @@ async def register_user(
     if existing.scalar_one_or_none() is not None:
         raise _bad_request("Email already registered")
 
-    created_wallet = await circle.create_developer_wallet()
+    circle_wallet_id: str | None = None
+    wallet_address: str | None = None
+
+    try:
+        created_wallet = await circle.create_developer_wallet()
+        circle_wallet_id = created_wallet.circle_wallet_id
+        wallet_address = created_wallet.wallet_address
+    except Exception:
+        # Local-dev fallback: allow auth to work even if Circle Wallets isn't configured.
+        # Payments in this MVP use the Gateway sidecar's key, not the user's Circle wallet.
+        circle_wallet_id = None
+        wallet_address = settings.x402_default_seller_address or f"0x{secrets.token_hex(20)}"
 
     user = User(
         email=email,
         hashed_password=hash_password(password),
         is_creator=is_creator,
-        circle_wallet_id=created_wallet.circle_wallet_id,
-        wallet_address=created_wallet.wallet_address,
+        circle_wallet_id=circle_wallet_id,
+        wallet_address=wallet_address,
     )
 
     session.add(user)

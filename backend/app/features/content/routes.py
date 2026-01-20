@@ -35,6 +35,10 @@ def _utcnow() -> datetime:
 _X402_CHUNK_SECONDS = 10
 _ARC_TESTNET_USDC_ADDRESS = "0x3600000000000000000000000000000000000000"
 
+_SUPPORTED_CACHE: dict | None = None
+_SUPPORTED_CACHE_EXPIRES_AT: float = 0.0
+_SUPPORTED_TTL_SECONDS = 300.0
+
 
 def get_ipfs_client() -> IPFSClient:
     return IPFSClient()
@@ -46,6 +50,30 @@ def _forbidden() -> HTTPException:
 
 def _service_unavailable(message: str) -> HTTPException:
     return HTTPException(status_code=503, detail=message)
+
+
+async def _get_gateway_supported_kinds(*, sidecar_url: str) -> dict | None:
+    global _SUPPORTED_CACHE, _SUPPORTED_CACHE_EXPIRES_AT
+    now = datetime.now(timezone.utc).timestamp()
+    if _SUPPORTED_CACHE and _SUPPORTED_CACHE_EXPIRES_AT > now:
+        return _SUPPORTED_CACHE
+
+    timeout = httpx.Timeout(10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            resp = await client.get(f"{sidecar_url.rstrip('/')}/supported")
+            resp.raise_for_status()
+            data = resp.json()
+        except httpx.RequestError:
+            return None
+        except httpx.HTTPStatusError:
+            return None
+
+    if isinstance(data, dict):
+        _SUPPORTED_CACHE = data
+        _SUPPORTED_CACHE_EXPIRES_AT = now + _SUPPORTED_TTL_SECONDS
+        return data
+    return None
 
 
 def _unauthorized() -> HTTPException:
@@ -290,6 +318,25 @@ async def stream_content(
 
     asset = settings.usdc_address or _ARC_TESTNET_USDC_ADDRESS
     amount = int(row.price_per_second) * _X402_CHUNK_SECONDS
+
+    kind_extra: dict | None = None
+    if settings.x402_gateway_sidecar_url:
+        supported = await _get_gateway_supported_kinds(sidecar_url=settings.x402_gateway_sidecar_url)
+        if isinstance(supported, dict):
+            kinds = supported.get("kinds")
+            if isinstance(kinds, list):
+                for kind in kinds:
+                    if not isinstance(kind, dict):
+                        continue
+                    if kind.get("scheme") != "exact":
+                        continue
+                    if kind.get("network") != settings.x402_network:
+                        continue
+                    extra = kind.get("extra")
+                    if isinstance(extra, dict):
+                        kind_extra = extra
+                        break
+
     accepts = [
         build_exact_accept(
             network=settings.x402_network,
@@ -297,7 +344,7 @@ async def stream_content(
             amount=amount,
             pay_to=seller_address,
             max_timeout_seconds=settings.x402_max_timeout_seconds,
-            extra={"name": settings.usdc_name, "version": settings.usdc_version},
+            extra=kind_extra or {"name": settings.usdc_name, "version": settings.usdc_version},
         )
     ]
 

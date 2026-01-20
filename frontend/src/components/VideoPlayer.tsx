@@ -6,7 +6,6 @@ import { getContent } from '../services/content';
 import { PaymentStreamSession } from '../services/streamSession';
 import {
   autoPayStream,
-  createPaymentSignature,
   getStreamPlaybackUrl,
   X402PaymentRequiredBody,
   X402PaymentRequiredError,
@@ -112,18 +111,6 @@ export default function VideoPlayer({
   async function payAndUnlock(): Promise<void> {
     if (unlockBusy) return;
     setError(null);
-
-    const accept = paywall?.accepts?.[0];
-    if (accept) {
-      try {
-        const signature = createPaymentSignature(accept);
-        const res = await getStreamPlaybackUrl(token, item.id, signature);
-        setStreamUrl(res.playbackUrl);
-        setPaymentResponse(res.paymentResponseHeader ?? null);
-        return;
-      } catch {
-      }
-    }
 
     const res = await autoPayStream(token, item.id);
     setStreamUrl(res.playbackUrl);

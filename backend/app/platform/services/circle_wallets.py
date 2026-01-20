@@ -70,7 +70,6 @@ class CircleWalletsClient:
         request = developer_controlled_wallets.SignTypedDataRequest.from_dict(
             {
                 "walletId": wallet_id,
-                "blockchain": blockchain,
                 "data": json.dumps(typed_data, separators=(",", ":"), sort_keys=True),
                 "memo": memo or "",
                 "entitySecretCiphertext": self._entity_secret_ciphertext(),
