@@ -97,12 +97,13 @@ export default function CreatorStudio({
 
   useEffect(() => {
     if (!withdrawTxId) return;
+    const txId = withdrawTxId!;
     let cancelled = false;
     let interval: number | null = null;
 
     async function poll() {
       try {
-        const info = await getCircleTransaction(token, withdrawTxId);
+        const info = await getCircleTransaction(token, txId);
         if (cancelled) return;
         setWithdrawInfo(info);
 
@@ -177,6 +178,9 @@ export default function CreatorStudio({
                   ) : null}
                   {withdrawInfo.error_reason ? (
                     <div className="text-[10px] text-red-400 font-bold break-all">{withdrawInfo.error_reason}</div>
+                  ) : null}
+                  {withdrawInfo.error_details ? (
+                    <div className="text-[10px] text-red-400 font-bold break-all">{withdrawInfo.error_details}</div>
                   ) : null}
                 </div>
               ) : (

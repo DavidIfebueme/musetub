@@ -4,8 +4,11 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+import httpx
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from Crypto.Hash import keccak
 
 from app.features.creators.schemas import (
     CreatorContentEarningsItem,
@@ -58,6 +61,46 @@ def _live_withdraw_enabled() -> bool:
         and settings.usdc_address
         and settings.escrow_address
     )
+
+
+def _abi_function_selector(signature: str) -> str:
+    h = keccak.new(digest_bits=256)
+    h.update(signature.encode("utf-8"))
+    return h.hexdigest()[:8]
+
+
+def _abi_encode_address(address: str) -> str:
+    if not address or not isinstance(address, str):
+        raise ValueError("Invalid address")
+    if not address.startswith("0x") or len(address) != 42:
+        raise ValueError("Invalid address")
+    return address[2:].lower().rjust(64, "0")
+
+
+async def _arc_eth_call(to_address: str, data: str) -> str:
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_call",
+        "params": [{"to": to_address, "data": data}, "latest"],
+    }
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(settings.arc_rpc_url, json=payload)
+        resp.raise_for_status()
+        body = resp.json()
+    if "error" in body:
+        raise HTTPException(status_code=502, detail=f"Arc RPC error: {body['error']}")
+    return str(body.get("result") or "0x0")
+
+
+async def _get_escrow_creator_balance_minor(creator_wallet_address: str) -> int:
+    selector = _abi_function_selector("creatorBalances(address)")
+    calldata = "0x" + selector + _abi_encode_address(creator_wallet_address)
+    result = await _arc_eth_call(settings.escrow_address, calldata)
+    try:
+        return int(result, 16)
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=502, detail=f"Arc RPC returned invalid value: {result}") from exc
 
 
 @router.get("/dashboard", response_model=CreatorDashboardResponse)
@@ -221,6 +264,15 @@ async def withdraw_creator(
     if _live_withdraw_enabled():
         if not user.circle_wallet_id:
             raise HTTPException(status_code=400, detail="Creator wallet not available")
+        if not getattr(user, "wallet_address", None):
+            raise HTTPException(status_code=400, detail="Creator wallet address not available")
+
+        creator_balance = await _get_escrow_creator_balance_minor(user.wallet_address)
+        if creator_balance <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Nothing to withdraw yet (on-chain creator balance is 0)",
+            )
 
         chain = ChainClient.from_settings()
         try:

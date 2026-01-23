@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class FundTestnetResponse(BaseModel):
@@ -29,5 +30,5 @@ class CircleTransactionResponse(BaseModel):
     abi_function_signature: str | None = None
     ref_id: str | None = None
     wallet_id: str | None = None
-    create_date: str | None = None
-    update_date: str | None = None
+    create_date: datetime | None = None
+    update_date: datetime | None = None
