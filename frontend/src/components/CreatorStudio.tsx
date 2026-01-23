@@ -140,6 +140,8 @@ export default function CreatorStudio({
         <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg italic leading-relaxed">Upload to IPFS and track settlements.</p>
       </header>
 
+      {error ? <div className="glass rounded-3xl p-6 border-zinc-800 text-red-400 font-bold break-all">{error}</div> : null}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass rounded-3xl p-8 border-zinc-800">
           <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total gross</div>

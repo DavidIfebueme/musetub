@@ -264,15 +264,21 @@ async def withdraw_creator(
     if _live_withdraw_enabled():
         if not user.circle_wallet_id:
             raise HTTPException(status_code=400, detail="Creator wallet not available")
-        if not getattr(user, "wallet_address", None):
-            raise HTTPException(status_code=400, detail="Creator wallet address not available")
 
-        creator_balance = await _get_escrow_creator_balance_minor(user.wallet_address)
-        if creator_balance <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Nothing to withdraw yet (on-chain creator balance is 0)",
-            )
+        creator_balance = None
+        if getattr(user, "wallet_address", None):
+            creator_balance = await _get_escrow_creator_balance_minor(user.wallet_address)
+            if creator_balance <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Nothing to withdraw yet (on-chain creator balance is 0). "
+                        "This value increases only after on-chain payments have executed successfully against the escrow contract. "
+                        "Common causes: (1) you are running in simulated mode (payments are recorded in Postgres but no on-chain USDC moves), "
+                        "or (2) the most recent Circle contract execution transaction is still pending/failed. "
+                        "Check the payment/withdraw tx status via GET /wallets/transactions/{tx_id} and ensure the payer wallet is funded with USDC."
+                    ),
+                )
 
         chain = ChainClient.from_settings()
         try:
