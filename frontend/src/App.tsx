@@ -207,12 +207,12 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen pb-24 md:pb-0 selection:bg-emerald-500/30">
+    return (
+      <div className="min-h-screen pb-24 md:pb-0 selection:bg-zinc-200/10">
       <nav className="glass sticky top-0 z-40 px-6 py-4 flex justify-between items-center border-b border-zinc-800">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setView('home')}>
-            <Zap className="text-emerald-500 group-hover:scale-110 transition-transform" fill="currentColor" size={24} />
+            <Zap className="text-zinc-200 group-hover:scale-110 transition-transform" fill="currentColor" size={24} />
             <span className="text-2xl font-black tracking-tighter italic">MuseTub</span>
           </div>
           <SettlementVisualizer />
@@ -223,7 +223,7 @@ export default function App() {
             onClick={() => setView('home')}
             className={
               view === 'home'
-                ? 'text-emerald-400 underline decoration-2 underline-offset-8'
+                ? 'text-white underline decoration-2 underline-offset-8 decoration-zinc-600'
                 : 'text-zinc-500 hover:text-white transition-colors'
             }
           >
@@ -233,7 +233,7 @@ export default function App() {
             onClick={() => setView('user')}
             className={
               view === 'user'
-                ? 'text-emerald-400 underline decoration-2 underline-offset-8'
+                ? 'text-white underline decoration-2 underline-offset-8 decoration-zinc-600'
                 : 'text-zinc-500 hover:text-white transition-colors'
             }
           >
@@ -244,7 +244,7 @@ export default function App() {
               onClick={() => setView('creator')}
               className={
                 view === 'creator'
-                  ? 'text-emerald-400 underline decoration-2 underline-offset-8'
+                  ? 'text-white underline decoration-2 underline-offset-8 decoration-zinc-600'
                   : 'text-zinc-500 hover:text-white transition-colors'
               }
             >
@@ -256,7 +256,7 @@ export default function App() {
             onClick={() => void openWalletPanel()}
             className="flex items-center gap-3 glass px-4 py-2 rounded-xl border-zinc-700 bg-zinc-900/50 hover:border-zinc-500 transition-colors"
           >
-            <Wallet size={14} className="text-emerald-400" />
+            <Wallet size={14} className="text-zinc-200" />
             <span className="mono text-xs tracking-normal">{walletLabel ?? '...'}</span>
           </button>
         </div>
@@ -276,13 +276,10 @@ export default function App() {
         {view === 'home' ? (
           <div className="space-y-12">
             <header className="py-16 text-center space-y-6">
-              <div className="inline-block glass px-4 py-2 rounded-2xl border-emerald-500/20 text-emerald-400 text-[10px] font-black tracking-[0.3em] uppercase mb-4">
-                Pay-per-10s Ticks
-              </div>
               <h2 className="text-6xl md:text-8xl font-black tracking-tighter leading-none">
-                Stream. <br /> <span className="gradient-text">Micro-Settle.</span>
+                Stream. <br /> <span className="text-zinc-200">Micro-Settle.</span>
               </h2>
-              <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg italic leading-relaxed">
+              <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg leading-relaxed">
                 Pay only while you watch.
               </p>
             </header>
@@ -291,7 +288,7 @@ export default function App() {
               {content.map((item) => (
                 <div
                   key={item.id}
-                  className="group glass rounded-[3rem] overflow-hidden border-zinc-800 hover:border-emerald-500/50 transition-all shadow-2xl shadow-transparent hover:shadow-emerald-500/5"
+                  className="group glass rounded-[3rem] overflow-hidden border-zinc-800 hover:border-zinc-500 transition-all shadow-2xl shadow-transparent"
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img
@@ -315,13 +312,13 @@ export default function App() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-emerald-400 mono font-black text-lg">{item.price_per_second}</div>
+                        <div className="text-white mono font-black text-lg">{item.price_per_second}</div>
                         <div className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">Minor/Sec</div>
                       </div>
                     </div>
                     <button
                       onClick={() => setActiveContent(item)}
-                      className="w-full py-5 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center gap-3 hover:bg-emerald-500 hover:text-black transition-all font-black text-sm tracking-widest"
+                      className="w-full py-5 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center gap-3 hover:bg-white hover:text-black transition-all font-black text-sm tracking-widest"
                     >
                       WATCH
                       <Zap size={16} fill="currentColor" />

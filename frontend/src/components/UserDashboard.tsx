@@ -41,11 +41,8 @@ export default function UserDashboard({ token }: { token: string }) {
   return (
     <div className="space-y-10">
       <header className="py-10 text-center space-y-4">
-        <div className="inline-block glass px-4 py-2 rounded-2xl border-emerald-500/20 text-emerald-400 text-[10px] font-black tracking-[0.3em] uppercase">
-          User Dashboard
-        </div>
-        <h2 className="text-5xl md:text-6xl font-black tracking-tighter leading-none italic">Your streaming history</h2>
-        <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg italic leading-relaxed">Totals and recent channels.</p>
+        <h2 className="text-5xl md:text-6xl font-black tracking-tighter leading-none">Your streaming history</h2>
+        <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg leading-relaxed">Totals and recent channels.</p>
       </header>
 
       {error ? <div className="glass rounded-3xl p-6 border-zinc-800 text-red-400 font-bold break-all">{error}</div> : null}
@@ -59,7 +56,7 @@ export default function UserDashboard({ token }: { token: string }) {
               <div className="mt-2 flex items-center justify-between gap-3">
                 <div className="mono text-xs font-bold text-zinc-200 break-all">{funding.wallet_address || '—'}</div>
                 <button
-                  className="px-3 py-2 bg-zinc-900 rounded-xl text-zinc-300 hover:text-emerald-400 transition-colors font-black text-xs"
+                  className="px-3 py-2 bg-zinc-900 rounded-xl text-zinc-300 hover:text-white transition-colors font-black text-xs"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(funding.wallet_address || '');
@@ -79,7 +76,7 @@ export default function UserDashboard({ token }: { token: string }) {
               <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Funding</div>
               <div className="mt-2 text-zinc-300 font-bold">{funding.instructions}</div>
               <a
-                className="mt-3 inline-block text-emerald-400 font-black text-xs tracking-widest uppercase"
+                className="mt-3 inline-block text-zinc-200 font-black text-xs tracking-widest uppercase"
                 href={funding.docs_url}
                 target="_blank"
                 rel="noreferrer"
@@ -98,7 +95,7 @@ export default function UserDashboard({ token }: { token: string }) {
               <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total seconds</div>
               <div className="mono text-3xl font-black text-white">{totals.seconds}</div>
             </div>
-            <Clock className="text-emerald-400" size={22} />
+            <Clock className="text-zinc-200" size={22} />
           </div>
         </div>
         <div className="glass rounded-3xl p-8 border-zinc-800">
@@ -109,9 +106,9 @@ export default function UserDashboard({ token }: { token: string }) {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total settled</div>
-              <div className="mono text-3xl font-black text-emerald-400">{totals.settled}</div>
+              <div className="mono text-3xl font-black text-white">{totals.settled}</div>
             </div>
-            <ReceiptText className="text-emerald-400" size={22} />
+            <ReceiptText className="text-zinc-200" size={22} />
           </div>
         </div>
       </div>

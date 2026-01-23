@@ -4,6 +4,7 @@ import { ArrowUpRight, Upload, Wallet } from 'lucide-react';
 import { CreatorDashboardResponse } from '../types';
 import { getCreatorDashboard, withdrawCreator } from '../services/creators';
 import { uploadContent } from '../services/content';
+import { getCircleTransaction, CircleTransactionResponse } from '../services/wallets';
 
 export default function CreatorStudio({
   token,
@@ -15,6 +16,10 @@ export default function CreatorStudio({
   const [dashboard, setDashboard] = useState<CreatorDashboardResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [withdrawTxId, setWithdrawTxId] = useState<string | null>(null);
+  const [withdrawInfo, setWithdrawInfo] = useState<CircleTransactionResponse | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
@@ -72,19 +77,57 @@ export default function CreatorStudio({
   }
 
   async function doWithdraw() {
-    if (busy) return;
+    if (busy || withdrawing) return;
     setBusy(true);
+    setWithdrawing(true);
     setError(null);
+    setWithdrawInfo(null);
+    setWithdrawTxId(null);
     try {
       const resp = await withdrawCreator(token);
       await refresh();
-      setError(`Withdraw submitted: ${resp.tx_id}`);
+      setWithdrawTxId(resp.tx_id);
     } catch (e) {
       setError(String(e));
     } finally {
       setBusy(false);
+      setWithdrawing(false);
     }
   }
+
+  useEffect(() => {
+    if (!withdrawTxId) return;
+    let cancelled = false;
+    let interval: number | null = null;
+
+    async function poll() {
+      try {
+        const info = await getCircleTransaction(token, withdrawTxId);
+        if (cancelled) return;
+        setWithdrawInfo(info);
+
+        const state = (info.state ?? '').toUpperCase();
+        if (state === 'COMPLETE' || state === 'CONFIRMED' || state === 'FAILED') {
+          if (interval !== null) {
+            window.clearInterval(interval);
+            interval = null;
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          // Keep UI resilient; polling is best-effort.
+          setWithdrawInfo(null);
+        }
+      }
+    }
+
+    void poll();
+    interval = window.setInterval(() => void poll(), 3_000);
+    return () => {
+      cancelled = true;
+      if (interval !== null) window.clearInterval(interval);
+    };
+  }, [token, withdrawTxId]);
 
   return (
     <div className="space-y-10">
@@ -113,13 +156,34 @@ export default function CreatorStudio({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Withdraw</div>
-              <div className="text-2xl font-black italic text-white">To wallet</div>
+              <div className="text-2xl font-black italic text-white">{withdrawing ? 'Submitting…' : 'To wallet'}</div>
             </div>
             <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center">
               <Wallet className="text-black" size={22} />
             </div>
           </div>
           <div className="mt-4 text-zinc-500 text-sm font-bold">Executes escrow withdraw when live.</div>
+
+          {withdrawTxId ? (
+            <div className="mt-4 glass rounded-2xl p-4 border-zinc-800">
+              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Withdraw tx</div>
+              <div className="mt-2 mono text-xs text-zinc-200 break-all">{withdrawTxId}</div>
+              {withdrawInfo ? (
+                <div className="mt-3 space-y-1">
+                  <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Status</div>
+                  <div className="mono text-xs font-bold text-zinc-200">{withdrawInfo.state}</div>
+                  {withdrawInfo.tx_hash ? (
+                    <div className="mono text-[10px] text-zinc-500 break-all">on-chain: {withdrawInfo.tx_hash}</div>
+                  ) : null}
+                  {withdrawInfo.error_reason ? (
+                    <div className="text-[10px] text-red-400 font-bold break-all">{withdrawInfo.error_reason}</div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-3 text-[10px] text-zinc-600 font-black uppercase tracking-widest">Checking status…</div>
+              )}
+            </div>
+          ) : null}
         </button>
       </div>
 

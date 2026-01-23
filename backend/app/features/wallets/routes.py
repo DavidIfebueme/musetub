@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 from Crypto.Hash import keccak
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 import httpx
 
 from app.features.wallets.schemas import ArcBlockHeightResponse
+from app.features.wallets.schemas import CircleTransactionResponse
 from app.features.wallets.schemas import FundTestnetResponse
 from app.features.wallets.schemas import UsdcBalanceResponse
 from app.platform.config import settings
 from app.platform.security import get_current_user
+from app.platform.services.circle_wallets import CircleWalletsClient
 from app.platform.services.chain import usdc_minor_units_to_decimal
 
 router = APIRouter(prefix="/wallets")
+
+
+def get_circle_wallets_client() -> CircleWalletsClient:
+    return CircleWalletsClient()
 
 
 async def _arc_rpc(method: str, params: list) -> dict:
@@ -54,7 +60,10 @@ def _erc20_balance_of_calldata(address: str) -> str:
 
 @router.post("/fund-testnet", response_model=FundTestnetResponse)
 async def fund_testnet(user=Depends(get_current_user)) -> FundTestnetResponse:
-    instructions = "Fund this wallet on Arc testnet USDC using Circle's testnet funding flow for your account."
+    instructions = (
+        "Fund this wallet with Arc testnet USDC using Circle's testnet funding flow for your account. "
+        "For on-chain contract calls (like creator withdraw), the wallet also needs a small amount of the chain's native token to pay gas."
+    )
     return FundTestnetResponse(
         wallet_address=user.wallet_address or "",
         instructions=instructions,
@@ -97,4 +106,35 @@ async def usdc_balance(user=Depends(get_current_user)) -> UsdcBalanceResponse:
         usdc_address=settings.usdc_address,
         balance_minor=balance_minor,
         balance=balance,
+    )
+
+
+@router.get("/transactions/{tx_id}", response_model=CircleTransactionResponse)
+async def circle_transaction(
+    tx_id: str,
+    user=Depends(get_current_user),
+    circle: CircleWalletsClient = Depends(get_circle_wallets_client),
+) -> CircleTransactionResponse:
+    if not settings.circle_api_key or not settings.circle_entity_secret:
+        raise RuntimeError("Circle Wallets not configured")
+
+    tx = await circle.get_transaction(tx_id=tx_id)
+
+    wallet_id = tx.get("walletId")
+    if user.circle_wallet_id and wallet_id and str(wallet_id) != str(user.circle_wallet_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    return CircleTransactionResponse(
+        id=str(tx.get("id") or tx_id),
+        state=str(tx.get("state") or "UNKNOWN"),
+        tx_hash=tx.get("txHash"),
+        block_height=tx.get("blockHeight"),
+        error_reason=tx.get("errorReason"),
+        error_details=tx.get("errorDetails"),
+        contract_address=tx.get("contractAddress"),
+        abi_function_signature=tx.get("abiFunctionSignature"),
+        ref_id=tx.get("refId"),
+        wallet_id=wallet_id,
+        create_date=tx.get("createDate"),
+        update_date=tx.get("updateDate"),
     )

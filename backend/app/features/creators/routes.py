@@ -20,6 +20,11 @@ from app.platform.security import get_current_user
 from app.platform.services.circle_wallets import CircleWalletsClient
 from app.platform.services.chain import ChainClient
 
+try:
+    from circle.web3.developer_controlled_wallets.exceptions import BadRequestException
+except Exception:  # pragma: no cover
+    BadRequestException = None  # type: ignore[assignment]
+
 
 router = APIRouter(prefix="/creators")
 
@@ -218,14 +223,33 @@ async def withdraw_creator(
             raise HTTPException(status_code=400, detail="Creator wallet not available")
 
         chain = ChainClient.from_settings()
-        tx_id = await circle.create_contract_execution_transaction(
-            wallet_id=user.circle_wallet_id,
-            blockchain=settings.circle_blockchain,
-            contract_address=chain.config.escrow_address,
-            abi_function_signature="withdrawCreator()",
-            abi_parameters=[],
-            ref_id=f"creator-withdraw:{user.id}",
-        )
-        return WithdrawResponse(tx_id=tx_id)
+        try:
+            tx_id = await circle.create_contract_execution_transaction(
+                wallet_id=user.circle_wallet_id,
+                blockchain=settings.circle_blockchain,
+                contract_address=chain.config.escrow_address,
+                abi_function_signature="withdrawCreator()",
+                abi_parameters=[],
+                ref_id=f"creator-withdraw:{user.id}",
+            )
+            return WithdrawResponse(tx_id=tx_id)
+        except Exception as exc:
+            message = str(exc)
+            lowered = message.lower()
+
+            if "native tokens" in lowered or "insufficient" in lowered:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Withdraw failed: the creator Circle wallet likely has insufficient Arc testnet native token "
+                        "to pay transaction fees (gas). Fund the creator wallet with a small amount of the chain's native token, "
+                        "then retry."
+                    ),
+                ) from exc
+
+            if BadRequestException is not None and isinstance(exc, BadRequestException):
+                raise HTTPException(status_code=400, detail=f"Circle withdraw failed: {message}") from exc
+
+            raise HTTPException(status_code=502, detail=f"Circle withdraw failed: {message}") from exc
 
     return WithdrawResponse(tx_id=f"simulated:{uuid4()}")

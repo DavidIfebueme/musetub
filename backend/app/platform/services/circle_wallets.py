@@ -124,3 +124,19 @@ class CircleWalletsClient:
             raise RuntimeError("Circle contract execution returned no transaction id")
 
         return str(tx_id)
+
+    async def get_transaction(self, *, tx_id: str) -> dict:
+        client = self._init_client()
+        api_instance = developer_controlled_wallets.TransactionsApi(client)
+
+        response = await asyncio.to_thread(api_instance.get_transaction, tx_id)
+        data = getattr(response, "data", None)
+        tx = getattr(data, "transaction", None) if data is not None else None
+        if tx is None:
+            raise RuntimeError("Circle get_transaction returned no transaction")
+
+        to_dict = getattr(tx, "to_dict", None)
+        if callable(to_dict):
+            return to_dict()
+        # Fallback: best-effort conversion
+        return dict(tx)

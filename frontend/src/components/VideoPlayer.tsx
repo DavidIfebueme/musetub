@@ -165,7 +165,7 @@ export default function VideoPlayer({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
-      <div className="max-w-5xl w-full glass rounded-[2.5rem] overflow-hidden shadow-2xl border-emerald-500/10">
+      <div className="max-w-5xl w-full glass rounded-[2.5rem] overflow-hidden shadow-2xl border-zinc-800">
         <div className="relative aspect-video bg-zinc-950 group">
           {streamUrl ? (
             <video
@@ -173,20 +173,12 @@ export default function VideoPlayer({
               className="w-full h-full object-contain"
               src={streamUrl}
               controls
-              onPlay={async () => {
-                if (playGuardRef.current) return;
-                playGuardRef.current = true;
-                try {
-                  // Consume the next 10s chunk as playback begins.
-                  videoRef.current?.pause();
-                  const ok = await consumeChunk();
-                  if (!ok) return;
-                  await startConsuming();
-                  await videoRef.current?.play().catch(() => undefined);
-                  setIsRunning(true);
-                } finally {
-                  playGuardRef.current = false;
-                }
+              onPlay={() => {
+                // Important: don't consume a chunk here.
+                // PAY & PLAY / the explicit PLAY button already consumes.
+                // Consuming again on native play burns the only 10s chunk and immediately triggers 402.
+                void startConsuming();
+                setIsRunning(true);
               }}
               onPause={() => {
                 stopConsuming();
@@ -243,7 +235,7 @@ export default function VideoPlayer({
                         }
                       }}
                       disabled={unlockBusy}
-                      className="flex-1 py-4 bg-emerald-500 text-black font-black rounded-2xl hover:bg-emerald-400 transition-all disabled:opacity-50"
+                      className="flex-1 py-4 bg-white text-black font-black rounded-2xl hover:bg-zinc-100 transition-all disabled:opacity-50"
                     >
                       {unlockBusy ? '...' : 'PAY & PLAY'}
                     </button>

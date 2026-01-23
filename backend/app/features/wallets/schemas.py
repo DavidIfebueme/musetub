@@ -16,3 +16,18 @@ class UsdcBalanceResponse(BaseModel):
     usdc_address: str
     balance_minor: int
     balance: str
+
+
+class CircleTransactionResponse(BaseModel):
+    id: str
+    state: str
+    tx_hash: str | None = None
+    block_height: int | None = None
+    error_reason: str | None = None
+    error_details: str | None = None
+    contract_address: str | None = None
+    abi_function_signature: str | None = None
+    ref_id: str | None = None
+    wallet_id: str | None = None
+    create_date: str | None = None
+    update_date: str | None = None
