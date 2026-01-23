@@ -1,22 +1,35 @@
 import { useEffect, useState } from 'react';
 import { Layers } from 'lucide-react';
 
+import { getArcBlockHeight } from '../services/wallets';
+
 export default function SettlementVisualizer() {
-  const [blockHeight, setBlockHeight] = useState(0);
+  const [blockHeight, setBlockHeight] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          setBlockHeight((h) => h + 1);
-          return 0;
+    let cancelled = false;
+
+    async function refreshHeight() {
+      try {
+        const resp = await getArcBlockHeight();
+        if (!cancelled) {
+          setBlockHeight(resp.block_height);
         }
-        return prev + 5;
-      });
-    }, 100);
+      } catch {
+        // Keep UI resilient; block height is informational.
+      }
+    }
+
+    void refreshHeight();
+
+    const interval = window.setInterval(() => {
+      setProgress((prev) => (prev >= 100 ? 0 : prev + 5));
+      void refreshHeight();
+    }, 1_000);
 
     return () => {
+      cancelled = true;
       window.clearInterval(interval);
     };
   }, []);
@@ -42,7 +55,7 @@ export default function SettlementVisualizer() {
       </div>
       <div>
         <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Arc Block Height</div>
-        <div className="mono text-xs font-bold text-emerald-400">{blockHeight.toLocaleString()}</div>
+        <div className="mono text-xs font-bold text-emerald-400">{blockHeight === null ? '—' : blockHeight.toLocaleString()}</div>
       </div>
     </div>
   );

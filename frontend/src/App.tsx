@@ -8,6 +8,7 @@ import UserDashboard from './components/UserDashboard';
 import { ContentItem } from './types';
 import { clearAuthToken, getMe, getStoredAuthToken, Me, login, register } from './services/auth';
 import { listContent } from './services/content';
+import { getUsdcBalance, UsdcBalanceResponse } from './services/wallets';
 
 type View = 'home' | 'user' | 'creator';
 
@@ -23,6 +24,10 @@ export default function App() {
   const [isCreator, setIsCreator] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
+  const [walletPanelOpen, setWalletPanelOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<UsdcBalanceResponse | null>(null);
+  const [walletBalanceError, setWalletBalanceError] = useState<string | null>(null);
+  const [walletBalanceBusy, setWalletBalanceBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +102,23 @@ export default function App() {
     setMe(null);
     setContent([]);
     setActiveContent(null);
+  }
+
+  async function openWalletPanel(): Promise<void> {
+    if (!token) return;
+    setWalletPanelOpen(true);
+
+    if (walletBalanceBusy || walletBalance) return;
+    setWalletBalanceBusy(true);
+    setWalletBalanceError(null);
+    try {
+      const bal = await getUsdcBalance(token);
+      setWalletBalance(bal);
+    } catch (e) {
+      setWalletBalanceError(String(e));
+    } finally {
+      setWalletBalanceBusy(false);
+    }
   }
 
   if (!token) {
@@ -229,10 +251,14 @@ export default function App() {
               STUDIO
             </button>
           ) : null}
-          <div className="flex items-center gap-3 glass px-4 py-2 rounded-xl border-zinc-700 bg-zinc-900/50">
+          <button
+            type="button"
+            onClick={() => void openWalletPanel()}
+            className="flex items-center gap-3 glass px-4 py-2 rounded-xl border-zinc-700 bg-zinc-900/50 hover:border-zinc-500 transition-colors"
+          >
             <Wallet size={14} className="text-emerald-400" />
             <span className="mono text-xs tracking-normal">{walletLabel ?? '...'}</span>
-          </div>
+          </button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -260,49 +286,6 @@ export default function App() {
                 Pay only while you watch.
               </p>
             </header>
-
-            <section className="glass rounded-[3rem] p-10 border-zinc-800">
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Comparison</div>
-              <h3 className="mt-2 text-3xl font-black italic">MuseTub vs YouTube / Spotify</h3>
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full text-left border-separate border-spacing-y-3">
-                  <thead>
-                    <tr className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">
-                      <th className="pr-6">Feature</th>
-                      <th className="pr-6">MuseTub</th>
-                      <th className="pr-6">YouTube</th>
-                      <th>Spotify</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm font-semibold">
-                    <tr className="glass rounded-2xl">
-                      <td className="py-4 pr-6 text-zinc-300">Pay only while watching</td>
-                      <td className="py-4 pr-6 text-emerald-400">Yes</td>
-                      <td className="py-4 pr-6 text-zinc-400">No</td>
-                      <td className="py-4 text-zinc-400">No</td>
-                    </tr>
-                    <tr className="glass rounded-2xl">
-                      <td className="py-4 pr-6 text-zinc-300">Pricing clarity</td>
-                      <td className="py-4 pr-6 text-emerald-400">Upfront per-second rate</td>
-                      <td className="py-4 pr-6 text-zinc-400">Varies (ads / subs)</td>
-                      <td className="py-4 text-zinc-400">Varies (per-stream)</td>
-                    </tr>
-                    <tr className="glass rounded-2xl">
-                      <td className="py-4 pr-6 text-zinc-300">Creator share</td>
-                      <td className="py-4 pr-6 text-emerald-400">90% of gross</td>
-                      <td className="py-4 pr-6 text-zinc-400">Varies</td>
-                      <td className="py-4 text-zinc-400">Varies</td>
-                    </tr>
-                    <tr className="glass rounded-2xl">
-                      <td className="py-4 pr-6 text-zinc-300">Micropayments</td>
-                      <td className="py-4 pr-6 text-emerald-400">USDC streaming ticks</td>
-                      <td className="py-4 pr-6 text-zinc-400">No</td>
-                      <td className="py-4 text-zinc-400">No</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {content.map((item) => (
@@ -363,6 +346,40 @@ export default function App() {
           item={activeContent}
           onClose={() => setActiveContent(null)}
         />
+      ) : null}
+
+      {walletPanelOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center p-6" onClick={() => setWalletPanelOpen(false)}>
+          <div className="w-full max-w-lg glass rounded-[2.5rem] p-8 border-zinc-800" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Wallet</div>
+                <div className="mt-1 text-2xl font-black italic">Arc testnet USDC balance</div>
+              </div>
+              <button
+                className="px-4 py-2 bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition-colors font-black text-xs"
+                onClick={() => setWalletPanelOpen(false)}
+              >
+                CLOSE
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <div className="glass rounded-2xl p-4 border-zinc-800">
+                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Address</div>
+                <div className="mono text-xs font-bold text-zinc-200 break-all">{me.wallet_address}</div>
+              </div>
+              <div className="glass rounded-2xl p-4 border-zinc-800">
+                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">USDC</div>
+                <div className="mono text-xl font-black text-white">
+                  {walletBalanceBusy ? '...' : walletBalance?.balance ?? '—'}
+                </div>
+                <div className="mt-1 mono text-[10px] font-bold text-zinc-500 break-all">minor: {walletBalance?.balance_minor ?? '—'}</div>
+              </div>
+              {walletBalanceError ? <div className="text-red-400 text-sm font-bold break-all">{walletBalanceError}</div> : null}
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

@@ -112,7 +112,12 @@ class CircleWalletsClient:
             }
         )
 
-        response = await asyncio.to_thread(api_instance.create_contract_execution_transaction, request)
+        method = getattr(api_instance, "create_developer_transaction_contract_execution", None)
+        if method is None:
+            method = getattr(api_instance, "create_contract_execution_transaction", None)
+        if method is None:
+            raise RuntimeError("Circle Transactions API missing contract execution method")
+        response = await asyncio.to_thread(method, request)
         data = getattr(response, "data", None)
         tx_id = getattr(data, "id", None) if data is not None else None
         if not tx_id:

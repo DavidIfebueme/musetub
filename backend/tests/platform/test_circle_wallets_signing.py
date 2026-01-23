@@ -56,7 +56,7 @@ async def test_create_contract_execution_transaction_requires_tx_id(monkeypatch:
         def __init__(self, client):
             self.client = client
 
-        def create_contract_execution_transaction(self, request):
+        def create_developer_transaction_contract_execution(self, request):
             return types.SimpleNamespace(data=types.SimpleNamespace(id=None))
 
     monkeypatch.setattr("app.platform.services.circle_wallets.utils.init_developer_controlled_wallets_client", fake_init)
