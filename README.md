@@ -2,7 +2,7 @@
 
 ## overview
 
-musetub is an agentic, pay-per-second streaming lab that stitches arc testnet usdc, circle developer wallets, and an x402 gateway into one experience. viewers prepay for ten-second chunks, creators earn 90%, and the whole stack surfaces owed/settled accounting so you can explain why a stream feels ahead or behind.
+musetub is an agentic, pay-per-second streaming platform that stitches arc testnet usdc, circle developer wallets, and an x402 gateway into one experience. viewers prepay for ten-second chunks, creators earn 90%, and the whole stack surfaces owed/settled accounting so you can explain why a stream feels ahead or behind.
 
 ## system architecture
 
