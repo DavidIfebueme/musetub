@@ -3,7 +3,6 @@ import { Activity, ShieldCheck } from 'lucide-react';
 
 import { ContentItem, ContentResponse } from '../types';
 import { getContent } from '../services/content';
-import { PaymentStreamSession } from '../services/streamSession';
 import {
   autoPayStream,
   getStreamPlaybackUrl,
@@ -29,26 +28,20 @@ export default function VideoPlayer({
   const [unlockBusy, setUnlockBusy] = useState(false);
   const [contentDetails, setContentDetails] = useState<ContentResponse | null>(null);
   const [detailsError, setDetailsError] = useState<string | null>(null);
-  const sessionRef = useRef<PaymentStreamSession | null>(null);
+  const consumeIntervalRef = useRef<number | null>(null);
+  const playGuardRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const rateLabel = useMemo(() => String(item.price_per_second), [item.price_per_second]);
 
   useEffect(() => {
-    const session = new PaymentStreamSession({
-      token,
-      contentId: item.id,
-      pricePerSecondMinor: item.price_per_second,
-      onTick: (deltaMinor) => setSessionMinor((v) => v + deltaMinor),
-      onError: (msg) => setError(msg),
-    });
-
-    sessionRef.current = session;
     return () => {
-      session.stop().catch(() => undefined);
-      sessionRef.current = null;
+      if (consumeIntervalRef.current !== null) {
+        window.clearInterval(consumeIntervalRef.current);
+        consumeIntervalRef.current = null;
+      }
     };
-  }, [token, item.id, item.price_per_second]);
+  }, []);
 
   useEffect(() => {
     setStreamUrl(null);
@@ -56,6 +49,12 @@ export default function VideoPlayer({
     setPaymentResponse(null);
     setContentDetails(null);
     setDetailsError(null);
+    setSessionMinor(0);
+    setIsRunning(false);
+    if (consumeIntervalRef.current !== null) {
+      window.clearInterval(consumeIntervalRef.current);
+      consumeIntervalRef.current = null;
+    }
   }, [item.id]);
 
   useEffect(() => {
@@ -80,11 +79,10 @@ export default function VideoPlayer({
   }, [item.id]);
 
   useEffect(() => {
-    void ensureUnlocked();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Do not auto-consume credit on modal open.
   }, [item.id]);
 
-  async function ensureUnlocked(): Promise<boolean> {
+  async function consumeChunk(): Promise<boolean> {
     if (unlockBusy) return false;
 
     setUnlockBusy(true);
@@ -95,6 +93,7 @@ export default function VideoPlayer({
       const res = await getStreamPlaybackUrl(token, item.id);
       setStreamUrl(res.playbackUrl);
       setPaymentResponse(res.paymentResponseHeader ?? null);
+      setSessionMinor((v) => v + item.price_per_second * 10);
       return true;
     } catch (e) {
       if (e instanceof X402PaymentRequiredError) {
@@ -113,40 +112,52 @@ export default function VideoPlayer({
     setError(null);
 
     const res = await autoPayStream(token, item.id);
-    setStreamUrl(res.playbackUrl);
     setPaymentResponse(res.paymentResponseHeader ?? null);
+    // Do not rely on /pay response for gating; /stream consumes credit.
+    // We still keep the returned header for debugging.
+    void res;
   }
 
-  async function start() {
-    setError(null);
-    try {
-      const ok = streamUrl ? true : await ensureUnlocked();
-      if (!ok) {
-        setIsRunning(false);
-        return;
-      }
-      await sessionRef.current?.start();
-      setIsRunning(true);
-    } catch (e) {
-      setError(String(e));
-      setIsRunning(false);
-    }
+  async function startConsuming(): Promise<void> {
+    if (consumeIntervalRef.current !== null) return;
+    consumeIntervalRef.current = window.setInterval(() => {
+      consumeChunk().then((ok) => {
+        if (!ok) {
+          if (consumeIntervalRef.current !== null) {
+            window.clearInterval(consumeIntervalRef.current);
+            consumeIntervalRef.current = null;
+          }
+          videoRef.current?.pause();
+          setIsRunning(false);
+        }
+      });
+    }, 10_000);
   }
 
-  async function stop() {
-    try {
-      await sessionRef.current?.stop();
-    } finally {
-      setIsRunning(false);
+  function stopConsuming(): void {
+    if (consumeIntervalRef.current !== null) {
+      window.clearInterval(consumeIntervalRef.current);
+      consumeIntervalRef.current = null;
     }
   }
 
   async function toggle() {
+    const v = videoRef.current;
+    if (!v) return;
+
     if (isRunning) {
-      await stop();
-    } else {
-      await start();
+      stopConsuming();
+      v.pause();
+      setIsRunning(false);
+      return;
     }
+
+    const ok = await consumeChunk();
+    if (!ok) return;
+
+    await startConsuming();
+    await v.play().catch(() => undefined);
+    setIsRunning(true);
   }
 
   const accept = paywall?.accepts?.[0];
@@ -162,8 +173,25 @@ export default function VideoPlayer({
               className="w-full h-full object-contain"
               src={streamUrl}
               controls
-              onPlay={start}
-              onPause={stop}
+              onPlay={async () => {
+                if (playGuardRef.current) return;
+                playGuardRef.current = true;
+                try {
+                  // Consume the next 10s chunk as playback begins.
+                  videoRef.current?.pause();
+                  const ok = await consumeChunk();
+                  if (!ok) return;
+                  await startConsuming();
+                  await videoRef.current?.play().catch(() => undefined);
+                  setIsRunning(true);
+                } finally {
+                  playGuardRef.current = false;
+                }
+              }}
+              onPause={() => {
+                stopConsuming();
+                setIsRunning(false);
+              }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-8">
@@ -205,8 +233,11 @@ export default function VideoPlayer({
                       onClick={async () => {
                         try {
                           await payAndUnlock();
-                          await start();
+                          const ok = await consumeChunk();
+                          if (!ok) return;
+                          await startConsuming();
                           await videoRef.current?.play().catch(() => undefined);
+                          setIsRunning(true);
                         } catch (e) {
                           setError(String(e));
                         }
@@ -245,7 +276,7 @@ export default function VideoPlayer({
               IPFS <span className="text-zinc-300 mono">{item.id.slice(0, 10)}...</span>
             </div>
             {streamUrl ? null : paywall ? (
-              <div className="text-emerald-400 text-xs font-black uppercase tracking-widest">Awaiting payment signature…</div>
+              <div className="text-emerald-400 text-xs font-black uppercase tracking-widest">Awaiting payment…</div>
             ) : null}
             {error ? <div className="text-red-400 text-sm font-bold break-all">{error}</div> : null}
           </div>
@@ -277,7 +308,8 @@ export default function VideoPlayer({
             </button>
             <button
               onClick={async () => {
-                await stop();
+                stopConsuming();
+                setIsRunning(false);
                 onClose();
               }}
               className="px-6 py-2 bg-zinc-900 rounded-xl text-zinc-400 hover:text-red-400 transition-colors font-black text-xs"

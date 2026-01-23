@@ -1,7 +1,5 @@
 import os
 import asyncio
-import base64
-import json
 import uuid
 
 import pytest
@@ -96,16 +94,22 @@ async def test_stream_requires_active_channel_and_fresh_ticks(monkeypatch: pytes
             assert len(body["accepts"]) == 1
 
             accepted = body["accepts"][0]
-            payment_payload = {"accepted": accepted, "payer": "0xtestpayer", "transaction": "0xtesttx"}
-            header_value = base64.b64encode(json.dumps(payment_payload).encode("utf-8")).decode("utf-8")
+            assert isinstance(accepted, dict)
+
+            pay = await client.post(
+                f"/api/v1/content/{content_id}/pay",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+            assert pay.status_code == 200
+            assert pay.json()["playback_url"].endswith("/bafytestcid")
+            assert "Payment-Response" in pay.headers
 
             stream_paid = await client.get(
                 f"/api/v1/content/{content_id}/stream",
-                headers={"Authorization": f"Bearer {user_token}", "Payment-Signature": header_value},
+                headers={"Authorization": f"Bearer {user_token}"},
             )
             assert stream_paid.status_code == 200
             assert stream_paid.json()["playback_url"].endswith("/bafytestcid")
-            assert "Payment-Response" in stream_paid.headers
 
             stream_again_requires_payment = await client.get(
                 f"/api/v1/content/{content_id}/stream",

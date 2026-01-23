@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import secrets
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
@@ -11,18 +13,17 @@ from app.features.ai_agents.services.pricing import compute_suggested_price_per_
 from app.features.ai_agents.services.quality import compute_quality_score
 from app.features.content.schemas import ContentListItem, ContentResponse, StreamResponse
 from app.platform.config import settings
-from app.platform.db.models import Content, PaymentChannel, Settlement, User
+from app.platform.db.models import Content, PaymentChannel, Settlement, StreamCredit, User
 from app.platform.db.session import get_session
 from app.platform.security import get_current_user
+from app.platform.services.chain import ChainClient
+from app.platform.services.circle_wallets import CircleWalletsClient
 from app.platform.services.gemini import get_or_create_pricing_explanation
 from app.platform.services.ipfs import IPFSClient
 from app.platform.services.x402 import (
     build_402_body,
     build_exact_accept,
-    decode_payment_signature,
     encode_payment_response,
-    verify_and_settle_simulated,
-    verify_and_settle_via_sidecar,
 )
 
 router = APIRouter(prefix="/content")
@@ -50,6 +51,69 @@ def _forbidden() -> HTTPException:
 
 def _service_unavailable(message: str) -> HTTPException:
     return HTTPException(status_code=503, detail=message)
+
+
+def get_circle_wallets_client() -> CircleWalletsClient:
+    return CircleWalletsClient()
+
+
+def _live_stream_pay_enabled() -> bool:
+    return bool(
+        settings.circle_api_key
+        and settings.circle_entity_secret
+        and settings.arc_rpc_url
+        and settings.arc_chain_id is not None
+        and settings.usdc_address
+        and settings.escrow_address
+    )
+
+
+async def _get_or_create_channel(
+    *,
+    session: AsyncSession,
+    user_id: str,
+    content: Content,
+) -> PaymentChannel:
+    channel_result = await session.execute(
+        select(PaymentChannel)
+        .where(
+            PaymentChannel.user_id == user_id,
+            PaymentChannel.content_id == content.id,
+            PaymentChannel.status == "active",
+        )
+        .order_by(PaymentChannel.opened_at.desc())
+        .limit(1)
+    )
+    channel = channel_result.scalar_one_or_none()
+    if channel is None:
+        channel = PaymentChannel(
+            user_id=user_id,
+            content_id=content.id,
+            price_per_second_locked=content.price_per_second,
+            status="active",
+        )
+        session.add(channel)
+        await session.flush()
+    return channel
+
+
+async def _get_or_create_credit(
+    *,
+    session: AsyncSession,
+    user_id: str,
+    content_id: str,
+) -> StreamCredit:
+    credit_result = await session.execute(
+        select(StreamCredit)
+        .where(StreamCredit.user_id == user_id, StreamCredit.content_id == content_id)
+        .with_for_update()
+    )
+    credit = credit_result.scalar_one_or_none()
+    if credit is None:
+        credit = StreamCredit(user_id=user_id, content_id=content_id, seconds_remaining=0)
+        session.add(credit)
+        await session.flush()
+    return credit
 
 
 async def _get_gateway_supported_kinds(*, sidecar_url: str) -> dict | None:
@@ -348,8 +412,8 @@ async def stream_content(
         )
     ]
 
-    payment_header = request.headers.get("payment-signature")
-    if not payment_header:
+    credit = await _get_or_create_credit(session=session, user_id=user.id, content_id=row.id)
+    if int(credit.seconds_remaining) < _X402_CHUNK_SECONDS:
         body = build_402_body(
             url=str(request.url),
             description=f"Stream {row.title} ({_X402_CHUNK_SECONDS}s)",
@@ -358,84 +422,15 @@ async def stream_content(
         )
         return JSONResponse(status_code=402, content=body)
 
-    try:
-        payment_payload = decode_payment_signature(payment_header)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    credit.seconds_remaining = int(credit.seconds_remaining) - _X402_CHUNK_SECONDS
 
-    accepted = payment_payload.get("accepted")
-    if not isinstance(accepted, dict):
-        raise HTTPException(status_code=400, detail="Missing accepted requirements")
-
-    if accepted.get("amount") != str(amount):
-        raise HTTPException(status_code=400, detail="Accepted amount mismatch")
-
-    if accepted.get("payTo") != seller_address:
-        raise HTTPException(status_code=400, detail="Accepted payTo mismatch")
-
-    if accepted.get("network") != settings.x402_network:
-        raise HTTPException(status_code=400, detail="Accepted network mismatch")
-
-    if accepted.get("asset") != asset:
-        raise HTTPException(status_code=400, detail="Accepted asset mismatch")
-
-    if settings.x402_gateway_sidecar_url:
-        try:
-            settlement = await verify_and_settle_via_sidecar(
-                sidecar_url=settings.x402_gateway_sidecar_url,
-                payment_payload=payment_payload,
-                requirements=accepted,
-            )
-        except httpx.RequestError as exc:
-            raise _service_unavailable(
-                f"x402 gateway sidecar unreachable at {settings.x402_gateway_sidecar_url}"
-            ) from exc
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=502, detail="x402 gateway sidecar error") from exc
-    else:
-        settlement = await verify_and_settle_simulated(payment_payload=payment_payload)
-
-    response.headers["Payment-Response"] = encode_payment_response(
-        {"transaction": settlement.transaction, "payer": settlement.payer}
-    )
-
-    channel_result = await session.execute(
-        select(PaymentChannel)
-        .where(
-            PaymentChannel.user_id == user.id,
-            PaymentChannel.content_id == row.id,
-            PaymentChannel.status == "active",
-        )
-        .order_by(PaymentChannel.opened_at.desc())
-        .limit(1)
-    )
-    channel = channel_result.scalar_one_or_none()
-    if channel is None:
-        channel = PaymentChannel(
-            user_id=user.id,
-            content_id=row.id,
-            price_per_second_locked=row.price_per_second,
-            status="active",
-        )
-        session.add(channel)
-        await session.flush()
-
+    channel = await _get_or_create_channel(session=session, user_id=user.id, content=row)
     now = _utcnow()
     channel.total_seconds_streamed = int(channel.total_seconds_streamed) + _X402_CHUNK_SECONDS
     channel.total_amount_owed = int(channel.total_amount_owed) + amount
-    channel.total_amount_settled = int(channel.total_amount_settled) + amount
     channel.last_tick_at = now
-    channel.last_settlement_at = now
 
-    session.add(
-        Settlement(
-            channel_id=channel.id,
-            amount=amount,
-            tx_hash=settlement.transaction,
-        )
-    )
     await session.commit()
-
     return StreamResponse(playback_url=ipfs.playback_url(row.ipfs_cid))
 
 
@@ -445,25 +440,89 @@ async def pay_stream_content(
     request: Request,
     response: Response,
     session: AsyncSession = Depends(get_session),
+    ipfs: IPFSClient = Depends(get_ipfs_client),
+    circle: CircleWalletsClient = Depends(get_circle_wallets_client),
 ) -> StreamResponse:
-    await _require_user_for_stream(request, session)
-    access_token = _extract_access_token(request)
+    user = await _require_user_for_stream(request, session)
 
-    if not settings.x402_gateway_sidecar_url:
-        raise _service_unavailable("x402 gateway sidecar not configured")
+    result = await session.execute(select(Content).where(Content.id == content_id))
+    content = result.scalar_one_or_none()
+    if content is None:
+        raise HTTPException(status_code=404, detail="Not found")
 
-    data = await _pay_via_sidecar(
-        sidecar_url=settings.x402_gateway_sidecar_url,
-        content_id=content_id,
-        access_token=access_token,
-    )
+    creator_result = await session.execute(select(User).where(User.id == content.creator_id))
+    creator = creator_result.scalar_one_or_none()
+    if creator is None:
+        raise HTTPException(status_code=404, detail="Creator not found")
 
-    playback_url = data.get("playback_url")
-    if isinstance(data.get("transaction"), str) and data["transaction"]:
-        response.headers["Payment-Response"] = encode_payment_response(
-            {"transaction": data["transaction"], "payer": data.get("payer") or "unknown"}
+    if not creator.wallet_address:
+        raise HTTPException(status_code=400, detail="Creator wallet not available")
+
+    amount = int(content.price_per_second) * _X402_CHUNK_SECONDS
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid price")
+
+    tx_id: str
+    payer: str
+
+    if _live_stream_pay_enabled():
+        if not user.circle_wallet_id or not user.wallet_address:
+            raise HTTPException(status_code=400, detail="User wallet not available")
+
+        chain = ChainClient.from_settings()
+
+        nonce = "0x" + secrets.token_hex(32)
+        now = _utcnow()
+        valid_after = int(now.timestamp()) - 5
+        valid_before = int((now + timedelta(minutes=5)).timestamp())
+
+        typed_data = chain.erc3009_receive_with_authorization_typed_data(
+            from_address=user.wallet_address,
+            to_address=chain.config.escrow_address,
+            value=amount,
+            valid_after=valid_after,
+            valid_before=valid_before,
+            nonce=nonce,
         )
 
-    if not isinstance(playback_url, str) or not playback_url:
-        raise HTTPException(status_code=502, detail="Invalid sidecar response")
-    return StreamResponse(playback_url=playback_url)
+        signature = await circle.sign_typed_data(
+            wallet_id=user.circle_wallet_id,
+            blockchain=settings.circle_blockchain,
+            typed_data=typed_data,
+            memo=f"musetub:prepay:{content.id}",
+        )
+
+        tx_id = await circle.create_contract_execution_transaction(
+            wallet_id=user.circle_wallet_id,
+            blockchain=settings.circle_blockchain,
+            contract_address=chain.config.escrow_address,
+            abi_function_signature="streamWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)",
+            abi_parameters=[
+                user.wallet_address,
+                creator.wallet_address,
+                amount,
+                valid_after,
+                valid_before,
+                nonce,
+                signature,
+            ],
+            ref_id=f"prepay:{user.id}:{content.id}",
+        )
+
+        payer = user.wallet_address
+    else:
+        tx_id = f"simulated:{uuid4()}"
+        payer = user.wallet_address or "unknown"
+
+    channel = await _get_or_create_channel(session=session, user_id=user.id, content=content)
+    session.add(Settlement(channel_id=channel.id, amount=amount, tx_hash=tx_id))
+    channel.total_amount_settled = int(channel.total_amount_settled) + amount
+    channel.last_settlement_at = _utcnow()
+
+    credit = await _get_or_create_credit(session=session, user_id=user.id, content_id=content.id)
+    credit.seconds_remaining = int(credit.seconds_remaining) + _X402_CHUNK_SECONDS
+
+    await session.commit()
+
+    response.headers["Payment-Response"] = encode_payment_response({"transaction": tx_id, "payer": payer})
+    return StreamResponse(playback_url=ipfs.playback_url(content.ipfs_cid))

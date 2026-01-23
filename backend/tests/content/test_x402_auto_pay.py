@@ -13,7 +13,7 @@ from app.main import create_app
 
 
 @pytest.mark.asyncio
-async def test_stream_pay_proxy_uses_sidecar(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_stream_pay_grants_credit(monkeypatch: pytest.MonkeyPatch) -> None:
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         pytest.skip("DATABASE_URL not set")
@@ -47,20 +47,6 @@ async def test_stream_pay_proxy_uses_sidecar(monkeypatch: pytest.MonkeyPatch) ->
 
         app.dependency_overrides[get_circle_client] = lambda: _FakeCircle()
         app.dependency_overrides[get_ipfs_client] = lambda: _FakeIPFS()
-
-        from app.platform.config import settings
-
-        monkeypatch.setattr(settings, "x402_gateway_sidecar_url", "http://fake-sidecar")
-
-        from app.features.content import routes as content_routes
-
-        async def _fake_pay_via_sidecar(*, sidecar_url: str, content_id: str, access_token: str) -> dict:
-            assert sidecar_url == "http://fake-sidecar"
-            assert isinstance(content_id, str) and content_id
-            assert isinstance(access_token, str) and access_token
-            return {"playback_url": "http://localhost:8080/ipfs/bafytestcid", "transaction": "0xtx", "payer": "0xpayer"}
-
-        monkeypatch.setattr(content_routes, "_pay_via_sidecar", _fake_pay_via_sidecar)
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             creator_email = f"creator-{uuid.uuid4()}@example.com"
@@ -103,5 +89,12 @@ async def test_stream_pay_proxy_uses_sidecar(monkeypatch: pytest.MonkeyPatch) ->
             assert pay.status_code == 200
             assert pay.json()["playback_url"].endswith("/bafytestcid")
             assert "Payment-Response" in pay.headers
+
+            stream = await client.get(
+                f"/api/v1/content/{content_id}/stream",
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+            assert stream.status_code == 200
+            assert stream.json()["playback_url"].endswith("/bafytestcid")
     finally:
         await engine.dispose()

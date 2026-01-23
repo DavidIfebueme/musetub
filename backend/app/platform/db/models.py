@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func, text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -54,6 +54,21 @@ class Content(Base):
     price_per_second: Mapped[int] = mapped_column(BigInteger)
     ipfs_cid: Mapped[str] = mapped_column(String(128))
 
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StreamCredit(Base):
+    __tablename__ = "stream_credits"
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_id", name="uq_stream_credits_user_content"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    content_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("content.id", ondelete="CASCADE"), index=True)
+
+    seconds_remaining: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

@@ -2,11 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { PaymentStreamSession } from './streamSession';
 
-vi.mock('./payments', () => {
+const { X402PaymentRequiredError } = vi.hoisted(() => {
+  class X402PaymentRequiredError extends Error {
+    constructor(readonly body: any) {
+      super('Payment required');
+    }
+  }
+  return { X402PaymentRequiredError };
+});
+
+vi.mock('./stream', () => {
   return {
-    openChannel: vi.fn(async () => ({ id: 'ch_1' })),
-    tickChannel: vi.fn(async () => ({ tick_seconds: 10 })),
-    closeChannel: vi.fn(async () => ({ tick_seconds: 0 })),
+    getStreamPlaybackUrl: vi.fn(async () => ({ playbackUrl: 'http://x/y' })),
+    X402PaymentRequiredError,
   };
 });
 
@@ -19,9 +27,10 @@ describe('PaymentStreamSession', () => {
     vi.useRealTimers();
   });
 
-  it('ticks immediately and on interval', async () => {
+  it('ticks on interval', async () => {
     const onTick = vi.fn();
     const onError = vi.fn();
+    const onPaymentRequired = vi.fn();
 
     const session = new PaymentStreamSession({
       token: 't',
@@ -29,15 +38,47 @@ describe('PaymentStreamSession', () => {
       pricePerSecondMinor: 2,
       onTick,
       onError,
+      onPaymentRequired,
     });
 
     await session.start();
     expect(onError).not.toHaveBeenCalled();
-    expect(onTick).toHaveBeenCalledWith(20);
+    expect(onTick).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(10_000);
-    expect(onTick).toHaveBeenCalledTimes(2);
+    expect(onTick).toHaveBeenCalledWith(20);
+    expect(onTick).toHaveBeenCalledTimes(1);
 
     await session.stop();
+  });
+
+  it('stops and surfaces paywall on 402', async () => {
+    const stream = await import('./stream');
+    (stream.getStreamPlaybackUrl as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new X402PaymentRequiredError({
+        x402Version: 2,
+        resource: { url: 'u', description: 'd', mimeType: 'application/json' },
+        accepts: [],
+      } as any),
+    );
+
+    const onTick = vi.fn();
+    const onError = vi.fn();
+    const onPaymentRequired = vi.fn();
+
+    const session = new PaymentStreamSession({
+      token: 't',
+      contentId: 'c',
+      pricePerSecondMinor: 2,
+      onTick,
+      onError,
+      onPaymentRequired,
+    });
+
+    await session.start();
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(onPaymentRequired).toHaveBeenCalledTimes(1);
+    expect(onTick).not.toHaveBeenCalled();
   });
 });

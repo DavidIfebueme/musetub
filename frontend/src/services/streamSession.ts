@@ -1,7 +1,6 @@
-import { closeChannel, openChannel, tickChannel } from './payments';
+import { getStreamPlaybackUrl, X402PaymentRequiredError, type X402PaymentRequiredBody } from './stream';
 
 export class PaymentStreamSession {
-  private channelId: string | null = null;
   private intervalId: number | null = null;
   private running = false;
 
@@ -12,6 +11,7 @@ export class PaymentStreamSession {
       pricePerSecondMinor: number;
       onTick: (deltaMinor: number) => void;
       onError: (message: string) => void;
+      onPaymentRequired: (body: X402PaymentRequiredBody) => void;
     },
   ) {}
 
@@ -19,25 +19,25 @@ export class PaymentStreamSession {
     if (this.running) return;
     this.running = true;
 
-    const opened = await openChannel(this.args.token, this.args.contentId);
-    this.channelId = opened.id;
-
     this.intervalId = window.setInterval(() => {
       this.tick().catch((e) => {
         this.args.onError(String(e));
         this.stop().catch(() => undefined);
       });
     }, 10_000);
-
-    await this.tick();
   }
 
   private async tick(): Promise<void> {
-    if (!this.channelId) return;
-    const resp = await tickChannel(this.args.token, this.channelId);
-    const delta = this.args.pricePerSecondMinor * resp.tick_seconds;
-    if (resp.tick_seconds > 0) {
-      this.args.onTick(delta);
+    try {
+      await getStreamPlaybackUrl(this.args.token, this.args.contentId);
+      this.args.onTick(this.args.pricePerSecondMinor * 10);
+    } catch (e) {
+      if (e instanceof X402PaymentRequiredError) {
+        this.args.onPaymentRequired(e.body);
+      } else {
+        this.args.onError(String(e));
+      }
+      await this.stop();
     }
   }
 
@@ -48,15 +48,6 @@ export class PaymentStreamSession {
     if (this.intervalId !== null) {
       window.clearInterval(this.intervalId);
       this.intervalId = null;
-    }
-
-    if (this.channelId) {
-      try {
-        await closeChannel(this.args.token, this.channelId);
-      } catch (e) {
-        this.args.onError(String(e));
-      }
-      this.channelId = null;
     }
   }
 }
