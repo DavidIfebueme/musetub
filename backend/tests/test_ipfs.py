@@ -10,6 +10,10 @@ from app.platform.services.ipfs import IPFSClient
 
 @pytest.mark.asyncio
 async def test_ipfs_add_and_gateway_fetch() -> None:
+    provider = (os.environ.get("IPFS_PROVIDER") or "kubo").strip().lower()
+    if provider != "kubo":
+        pytest.skip("IPFS integration test only runs against local Kubo")
+
     api_url = os.environ.get("IPFS_API_URL") or settings.ipfs_api_url
     gateway_url = os.environ.get("IPFS_GATEWAY_URL") or settings.ipfs_gateway_url
 

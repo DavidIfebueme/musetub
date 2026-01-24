@@ -16,8 +16,13 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/musetub"
     redis_url: str = "redis://localhost:6379/0"
+
+
+    ipfs_provider: str = "kubo"
     ipfs_api_url: str = "http://localhost:5001"
     ipfs_gateway_url: str = "http://localhost:8080/ipfs"
+    pinata_api_url: str = "https://api.pinata.cloud"
+    pinata_jwt: str | None = None
 
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-1.5-flash"
