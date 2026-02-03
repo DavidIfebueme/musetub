@@ -41,22 +41,25 @@ export default function UserDashboard({ token }: { token: string }) {
   return (
     <div className="space-y-10">
       <header className="py-10 text-center space-y-4">
-        <h2 className="text-5xl md:text-6xl font-black tracking-tighter leading-none">Your streaming history</h2>
-        <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg leading-relaxed">Totals and recent channels.</p>
+        <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.4em] text-zinc-400">
+          Viewer dashboard
+        </div>
+        <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Your streaming history</h2>
+        <p className="text-zinc-400 max-w-2xl mx-auto font-medium text-lg leading-relaxed">Totals, balances, and recent sessions.</p>
       </header>
 
-      {error ? <div className="glass rounded-3xl p-6 border-zinc-800 text-red-400 font-bold break-all">{error}</div> : null}
+      {error ? <div className="glass rounded-3xl p-6 border-white/10 text-red-400 font-bold break-all">{error}</div> : null}
 
       {funding ? (
-        <div className="glass rounded-[2.5rem] p-10 border-zinc-800">
-          <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Wallet</div>
+        <div className="glass rounded-[2.5rem] p-10 border-white/10">
+          <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Wallet</div>
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glass rounded-2xl p-6 border-zinc-800">
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Arc address</div>
+            <div className="glass rounded-2xl p-6 border-white/10">
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Arc address</div>
               <div className="mt-2 flex items-center justify-between gap-3">
                 <div className="mono text-xs font-bold text-zinc-200 break-all">{funding.wallet_address || '—'}</div>
                 <button
-                  className="px-3 py-2 bg-zinc-900 rounded-xl text-zinc-300 hover:text-white transition-colors font-black text-xs"
+                  className="px-3 py-2 bg-white/10 rounded-xl text-zinc-200 hover:text-white transition-colors font-black text-xs"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(funding.wallet_address || '');
@@ -72,11 +75,11 @@ export default function UserDashboard({ token }: { token: string }) {
                 </button>
               </div>
             </div>
-            <div className="glass rounded-2xl p-6 border-zinc-800">
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Funding</div>
-              <div className="mt-2 text-zinc-300 font-bold">{funding.instructions}</div>
+            <div className="glass rounded-2xl p-6 border-white/10">
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Funding</div>
+              <div className="mt-2 text-zinc-300 font-semibold">{funding.instructions}</div>
               <a
-                className="mt-3 inline-block text-zinc-200 font-black text-xs tracking-widest uppercase"
+                className="mt-3 inline-block text-zinc-200 font-black text-xs tracking-[0.35em] uppercase"
                 href={funding.docs_url}
                 target="_blank"
                 rel="noreferrer"
@@ -89,23 +92,23 @@ export default function UserDashboard({ token }: { token: string }) {
       ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass rounded-3xl p-8 border-zinc-800">
+        <div className="glass rounded-3xl p-8 border-white/10">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total seconds</div>
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Total seconds</div>
               <div className="mono text-3xl font-black text-white">{totals.seconds}</div>
             </div>
             <Clock className="text-zinc-200" size={22} />
           </div>
         </div>
-        <div className="glass rounded-3xl p-8 border-zinc-800">
-          <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total owed</div>
+        <div className="glass rounded-3xl p-8 border-white/10">
+          <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Total owed</div>
           <div className="mono text-3xl font-black text-white">{totals.owed}</div>
         </div>
-        <div className="glass rounded-3xl p-8 border-zinc-800">
+        <div className="glass rounded-3xl p-8 border-white/10">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total settled</div>
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Total settled</div>
               <div className="mono text-3xl font-black text-white">{totals.settled}</div>
             </div>
             <ReceiptText className="text-zinc-200" size={22} />
@@ -113,20 +116,20 @@ export default function UserDashboard({ token }: { token: string }) {
         </div>
       </div>
 
-      <div className="glass rounded-[2.5rem] p-10 border-zinc-800">
-        <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Recent channels</div>
+      <div className="glass rounded-[2.5rem] p-10 border-white/10">
+        <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Recent channels</div>
         <div className="mt-6 space-y-3">
           {history.slice(0, 20).map((h) => (
-            <div key={h.channel_id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-zinc-800">
+            <div key={h.channel_id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-white/10">
               <div className="min-w-0">
                 <div className="font-black italic truncate">{h.content_title}</div>
-                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mono">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] mono">
                   {h.status} • {h.total_seconds_streamed}s
                 </div>
               </div>
               <div className="text-right">
                 <div className="mono text-white font-black">{h.total_amount_owed}</div>
-                <div className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">owed</div>
+                <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">owed</div>
               </div>
             </div>
           ))}

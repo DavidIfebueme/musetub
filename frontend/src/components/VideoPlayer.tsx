@@ -165,7 +165,7 @@ export default function VideoPlayer({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
-      <div className="max-w-5xl w-full glass rounded-[2.5rem] overflow-hidden shadow-2xl border-zinc-800">
+      <div className="max-w-5xl w-full glass rounded-[2.5rem] overflow-hidden shadow-2xl border-white/10">
         <div className="relative aspect-video bg-zinc-950 group">
           {streamUrl ? (
             <video
@@ -187,33 +187,33 @@ export default function VideoPlayer({
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-8">
-              <div className="w-full max-w-2xl glass rounded-3xl p-8 border border-zinc-800">
-                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">x402</div>
-                <div className="mt-1 text-2xl font-black italic">Payment required to stream</div>
+              <div className="w-full max-w-2xl glass rounded-3xl p-8 border border-white/10">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">x402</div>
+                <div className="mt-1 text-2xl font-black">Payment required to stream</div>
 
                 {pricingExplanation ? (
-                  <div className="mt-4 glass rounded-2xl p-4 border-zinc-800">
-                    <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Why this price</div>
+                  <div className="mt-4 glass rounded-2xl p-4 border-white/10">
+                    <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Why this price</div>
                     <div className="mt-2 text-zinc-200 text-sm font-semibold leading-relaxed">{pricingExplanation}</div>
                   </div>
                 ) : detailsError ? (
-                  <div className="mt-4 text-[10px] text-zinc-600 font-black uppercase tracking-widest break-all">
+                  <div className="mt-4 text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] break-all">
                     Pricing details unavailable: {detailsError}
                   </div>
                 ) : null}
 
                 {accept ? (
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="glass rounded-2xl p-4 border-zinc-800">
-                      <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Amount</div>
+                    <div className="glass rounded-2xl p-4 border-white/10">
+                      <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Amount</div>
                       <div className="mono text-white font-bold break-all">{accept.amount}</div>
                     </div>
-                    <div className="glass rounded-2xl p-4 border-zinc-800">
-                      <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Network</div>
+                    <div className="glass rounded-2xl p-4 border-white/10">
+                      <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Network</div>
                       <div className="mono text-white font-bold break-all">{accept.network}</div>
                     </div>
-                    <div className="glass rounded-2xl p-4 border-zinc-800 md:col-span-2">
-                      <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Pay to</div>
+                    <div className="glass rounded-2xl p-4 border-white/10 md:col-span-2">
+                      <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Pay to</div>
                       <div className="mono text-white font-bold break-all">{accept.payTo}</div>
                     </div>
                   </div>
@@ -241,7 +241,7 @@ export default function VideoPlayer({
                     </button>
                     <button
                       onClick={onClose}
-                      className="px-6 py-4 bg-zinc-900 rounded-2xl text-zinc-400 hover:text-red-400 transition-colors font-black"
+                      className="px-6 py-4 bg-white/10 rounded-2xl text-zinc-300 hover:text-white transition-colors font-black"
                     >
                       CLOSE
                     </button>
@@ -249,7 +249,7 @@ export default function VideoPlayer({
                 </div>
 
                 {paymentResponse ? (
-                  <div className="mt-4 text-[10px] text-zinc-500 font-black uppercase tracking-widest break-all">
+                  <div className="mt-4 text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] break-all">
                     Payment-Response: {paymentResponse}
                   </div>
                 ) : null}

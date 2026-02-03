@@ -156,7 +156,7 @@ export default function App() {
   }
 
     return (
-      <div className="min-h-screen pb-24 md:pb-0 selection:bg-zinc-200/10">
+        <div className="min-h-screen pb-24 md:pb-0 selection:bg-white/10">
           <nav className="glass sticky top-0 z-40 px-6 py-4 flex justify-between items-center border-b border-white/10">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setView('home')}>
@@ -166,12 +166,12 @@ export default function App() {
           <SettlementVisualizer />
         </div>
 
-        <div className="hidden md:flex items-center gap-10 font-black text-[10px] tracking-[0.2em]">
+        <div className="hidden md:flex items-center gap-8 font-black text-[10px] tracking-[0.35em] uppercase">
           <button
             onClick={() => setView('home')}
             className={
               view === 'home'
-                ? 'text-white underline decoration-2 underline-offset-8 decoration-zinc-600'
+                ? 'text-white underline decoration-2 underline-offset-8 decoration-white/40'
                 : 'text-zinc-500 hover:text-white transition-colors'
             }
           >
@@ -181,7 +181,7 @@ export default function App() {
             onClick={() => setView('user')}
             className={
               view === 'user'
-                ? 'text-white underline decoration-2 underline-offset-8 decoration-zinc-600'
+                ? 'text-white underline decoration-2 underline-offset-8 decoration-white/40'
                 : 'text-zinc-500 hover:text-white transition-colors'
             }
           >
@@ -192,7 +192,7 @@ export default function App() {
               onClick={() => setView('creator')}
               className={
                 view === 'creator'
-                  ? 'text-white underline decoration-2 underline-offset-8 decoration-zinc-600'
+                  ? 'text-white underline decoration-2 underline-offset-8 decoration-white/40'
                   : 'text-zinc-500 hover:text-white transition-colors'
               }
             >
@@ -202,7 +202,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => void openWalletPanel()}
-            className="flex items-center gap-3 glass px-4 py-2 rounded-xl border-zinc-700 bg-zinc-900/50 hover:border-zinc-500 transition-colors"
+            className="flex items-center gap-3 glass px-4 py-2 rounded-full border-white/10 bg-white/5 hover:border-white/30 transition-colors"
           >
             <Wallet size={14} className="text-zinc-200" />
             <span className="mono text-xs tracking-normal">{walletLabel ?? '...'}</span>
@@ -223,53 +223,55 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-6">
         {view === 'home' ? (
           <div className="space-y-12">
-            <header className="py-16 text-center space-y-6">
-              <h2 className="text-6xl md:text-8xl font-black tracking-tighter leading-none">
-                Stream. <br /> <span className="text-zinc-200">Micro-Settle.</span>
+            <header className="py-14 text-center space-y-6">
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.4em] text-zinc-400">
+                Live market
+              </div>
+              <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95]">
+                Stream. Settle. Repeat.
               </h2>
-              <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg leading-relaxed">
-                Pay only while you watch.
+              <p className="text-zinc-400 max-w-2xl mx-auto font-medium text-lg leading-relaxed">
+                Pay only while you watch. Stop anytime with 10‑second credit windows.
               </p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {content.map((item) => (
                 <div
                   key={item.id}
-                  className="group glass rounded-[3rem] overflow-hidden border-zinc-800 hover:border-zinc-500 transition-all shadow-2xl shadow-transparent"
+                  className="group glass rounded-[2.5rem] overflow-hidden border-white/10 hover:border-white/30 transition-all"
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img
                       src={`https://picsum.photos/seed/${item.id}/800/450`}
                       alt={item.title}
-                      className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+                      className="w-full h-full object-cover grayscale-[35%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
-                    <div className="absolute top-6 left-6 bg-zinc-950/80 backdrop-blur-md text-[10px] font-black px-3 py-1.5 rounded-full border border-white/10 uppercase tracking-widest">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-70" />
+                    <div className="absolute top-6 left-6 bg-black/70 backdrop-blur-md text-[10px] font-black px-3 py-1.5 rounded-full border border-white/10 uppercase tracking-[0.3em]">
                       IPFS
                     </div>
                   </div>
-                  <div className="p-10 space-y-8">
+                  <div className="p-8 space-y-6">
                     <div className="flex justify-between items-start">
                       <div className="space-y-2">
-                        <h4 className="text-2xl font-black italic group-hover:text-emerald-400 transition-colors leading-tight">
+                        <h4 className="text-2xl font-black group-hover:text-white transition-colors leading-tight">
                           {item.title}
                         </h4>
-                        <p className="text-zinc-500 font-bold tracking-widest uppercase text-xs">
+                        <p className="text-zinc-500 font-bold tracking-[0.3em] uppercase text-xs">
                           {item.creator_id.slice(0, 8)}
                         </p>
                       </div>
                       <div className="text-right">
                         <div className="text-white mono font-black text-lg">{item.price_per_second}</div>
-                        <div className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">Minor/Sec</div>
+                        <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.3em]">Minor/Sec</div>
                       </div>
                     </div>
                     <button
                       onClick={() => setActiveContent(item)}
-                      className="w-full py-5 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center gap-3 hover:bg-white hover:text-black transition-all font-black text-sm tracking-widest"
+                      className="w-full py-5 bg-white text-black rounded-3xl flex items-center justify-center gap-3 hover:bg-zinc-100 transition-all font-black text-sm tracking-[0.35em] uppercase"
                     >
                       WATCH
-                      <Zap size={16} fill="currentColor" />
                     </button>
                   </div>
                 </div>
@@ -295,14 +297,14 @@ export default function App() {
 
       {walletPanelOpen ? (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center p-6" onClick={() => setWalletPanelOpen(false)}>
-          <div className="w-full max-w-lg glass rounded-[2.5rem] p-8 border-zinc-800" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg glass rounded-[2.5rem] p-8 border-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Wallet</div>
-                <div className="mt-1 text-2xl font-black italic">Arc testnet USDC balance</div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Wallet</div>
+                <div className="mt-1 text-2xl font-black">Arc testnet USDC balance</div>
               </div>
               <button
-                className="px-4 py-2 bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition-colors font-black text-xs"
+                className="px-4 py-2 bg-white/10 rounded-xl text-zinc-300 hover:text-white transition-colors font-black text-xs"
                 onClick={() => setWalletPanelOpen(false)}
               >
                 CLOSE
@@ -310,12 +312,12 @@ export default function App() {
             </div>
 
             <div className="mt-6 space-y-3">
-              <div className="glass rounded-2xl p-4 border-zinc-800">
-                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Address</div>
+              <div className="glass rounded-2xl p-4 border-white/10">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Address</div>
                 <div className="mono text-xs font-bold text-zinc-200 break-all">{me.wallet_address}</div>
               </div>
-              <div className="glass rounded-2xl p-4 border-zinc-800">
-                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">USDC</div>
+              <div className="glass rounded-2xl p-4 border-white/10">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">USDC</div>
                 <div className="mono text-xl font-black text-white">
                   {walletBalanceBusy ? '...' : walletBalance?.balance ?? '—'}
                 </div>

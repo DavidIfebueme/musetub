@@ -133,47 +133,47 @@ export default function CreatorStudio({
   return (
     <div className="space-y-10">
       <header className="py-10 text-center space-y-4">
-        <div className="inline-block glass px-4 py-2 rounded-2xl border-emerald-500/20 text-emerald-400 text-[10px] font-black tracking-[0.3em] uppercase">
-          Creator Studio
+        <div className="inline-block glass px-4 py-2 rounded-full border-white/10 text-zinc-300 text-[10px] font-black tracking-[0.4em] uppercase">
+          Creator studio
         </div>
-        <h2 className="text-5xl md:text-6xl font-black tracking-tighter leading-none italic">Ship content. Earn in ticks.</h2>
-        <p className="text-zinc-500 max-w-2xl mx-auto font-medium text-lg italic leading-relaxed">Upload to IPFS and track settlements.</p>
+        <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Ship content. Earn in real time.</h2>
+        <p className="text-zinc-400 max-w-2xl mx-auto font-medium text-lg leading-relaxed">Upload to IPFS and track live settlement.</p>
       </header>
 
-      {error ? <div className="glass rounded-3xl p-6 border-zinc-800 text-red-400 font-bold break-all">{error}</div> : null}
+      {error ? <div className="glass rounded-3xl p-6 border-white/10 text-red-400 font-bold break-all">{error}</div> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass rounded-3xl p-8 border-zinc-800">
-          <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Total gross</div>
+        <div className="glass rounded-3xl p-8 border-white/10">
+          <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Total gross</div>
           <div className="mono text-3xl font-black text-white">{totals.gross}</div>
         </div>
-        <div className="glass rounded-3xl p-8 border-zinc-800">
-          <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Creator share</div>
-          <div className="mono text-3xl font-black text-emerald-400">{totals.creator}</div>
+        <div className="glass rounded-3xl p-8 border-white/10">
+          <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Creator share</div>
+          <div className="mono text-3xl font-black text-white">{totals.creator}</div>
         </div>
         <button
           onClick={doWithdraw}
           disabled={busy}
-          className="glass rounded-3xl p-8 border-emerald-500/20 hover:border-emerald-500/50 transition-all text-left"
+          className="glass rounded-3xl p-8 border-white/10 hover:border-white/30 transition-all text-left"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Withdraw</div>
-              <div className="text-2xl font-black italic text-white">{withdrawing ? 'Submitting…' : 'To wallet'}</div>
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Withdraw</div>
+              <div className="text-2xl font-black text-white">{withdrawing ? 'Submitting…' : 'To wallet'}</div>
             </div>
-            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center">
               <Wallet className="text-black" size={22} />
             </div>
           </div>
-          <div className="mt-4 text-zinc-500 text-sm font-bold">Executes escrow withdraw when live.</div>
+          <div className="mt-4 text-zinc-500 text-sm font-semibold">Executes escrow withdraw when live.</div>
 
           {withdrawTxId ? (
-            <div className="mt-4 glass rounded-2xl p-4 border-zinc-800">
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Withdraw tx</div>
+            <div className="mt-4 glass rounded-2xl p-4 border-white/10">
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Withdraw tx</div>
               <div className="mt-2 mono text-xs text-zinc-200 break-all">{withdrawTxId}</div>
               {withdrawInfo ? (
                 <div className="mt-3 space-y-1">
-                  <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Status</div>
+                  <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Status</div>
                   <div className="mono text-xs font-bold text-zinc-200">{withdrawInfo.state}</div>
                   {withdrawInfo.tx_hash ? (
                     <div className="mono text-[10px] text-zinc-500 break-all">on-chain: {withdrawInfo.tx_hash}</div>
@@ -186,7 +186,7 @@ export default function CreatorStudio({
                   ) : null}
                 </div>
               ) : (
-                <div className="mt-3 text-[10px] text-zinc-600 font-black uppercase tracking-widest">Checking status…</div>
+                <div className="mt-3 text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Checking status…</div>
               )}
             </div>
           ) : null}
@@ -194,13 +194,13 @@ export default function CreatorStudio({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="glass rounded-[2.5rem] p-10 border-zinc-800">
+        <div className="glass rounded-[2.5rem] p-10 border-white/10">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Upload</div>
-              <div className="text-2xl font-black italic">New content</div>
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Upload</div>
+              <div className="text-2xl font-black">New content</div>
             </div>
-            <Upload className="text-emerald-400" size={22} />
+            <Upload className="text-white" size={22} />
           </div>
 
           <div className="space-y-4">
@@ -208,13 +208,13 @@ export default function CreatorStudio({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="title"
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
             />
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="description"
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
             />
 
             <div className="grid grid-cols-2 gap-3">
@@ -222,14 +222,14 @@ export default function CreatorStudio({
                 value={contentType}
                 onChange={(e) => setContentType(e.target.value)}
                 placeholder="content_type"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
               <input
                 value={durationSeconds}
                 onChange={(e) => setDurationSeconds(Number(e.target.value))}
                 placeholder="duration_seconds"
                 type="number"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
 
@@ -238,32 +238,32 @@ export default function CreatorStudio({
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
                 placeholder="resolution"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
               <input
                 value={bitrateTier}
                 onChange={(e) => setBitrateTier(e.target.value)}
                 placeholder="bitrate_tier"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
               <input
                 value={engagementIntent}
                 onChange={(e) => setEngagementIntent(e.target.value)}
                 placeholder="engagement_intent"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
 
             <input
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800 text-zinc-400"
+              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 text-zinc-400"
             />
 
             <button
               onClick={submitUpload}
               disabled={busy || !file || !title || !description}
-              className="w-full py-4 bg-emerald-500 text-black font-black rounded-2xl hover:bg-emerald-400 transition-all disabled:opacity-50"
+              className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-zinc-100 transition-all disabled:opacity-50"
             >
               {busy ? '...' : 'Upload'}
             </button>
@@ -273,25 +273,25 @@ export default function CreatorStudio({
         </div>
 
         <div className="space-y-6">
-          <div className="glass rounded-[2.5rem] p-10 border-zinc-800">
+          <div className="glass rounded-[2.5rem] p-10 border-white/10">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Earnings</div>
-                <div className="text-2xl font-black italic">By content</div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Earnings</div>
+                <div className="text-2xl font-black">By content</div>
               </div>
-              <ArrowUpRight className="text-emerald-400" size={22} />
+              <ArrowUpRight className="text-white" size={22} />
             </div>
 
             <div className="space-y-3">
               {(dashboard?.earnings_by_content ?? []).slice(0, 10).map((e) => (
-                <div key={e.content_id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-zinc-800">
+                <div key={e.content_id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-white/10">
                   <div className="min-w-0">
-                    <div className="font-black italic truncate">{e.title}</div>
-                    <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mono">{e.content_id.slice(0, 8)}...</div>
+                    <div className="font-black truncate">{e.title}</div>
+                    <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] mono">{e.content_id.slice(0, 8)}...</div>
                   </div>
                   <div className="text-right">
-                    <div className="mono text-emerald-400 font-black">{e.amount_creator}</div>
-                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">creator</div>
+                    <div className="mono text-white font-black">{e.amount_creator}</div>
+                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">creator</div>
                   </div>
                 </div>
               ))}
@@ -301,18 +301,18 @@ export default function CreatorStudio({
             </div>
           </div>
 
-          <div className="glass rounded-[2.5rem] p-10 border-zinc-800">
-            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Recent settlements</div>
+          <div className="glass rounded-[2.5rem] p-10 border-white/10">
+            <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Recent settlements</div>
             <div className="mt-4 space-y-3">
               {(dashboard?.recent_settlements ?? []).slice(0, 6).map((s) => (
-                <div key={s.id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-zinc-800">
+                <div key={s.id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-white/10">
                   <div>
                     <div className="mono text-xs text-zinc-300">{s.tx_hash ? `${s.tx_hash.slice(0, 10)}...` : 'simulated'}</div>
-                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">{new Date(s.created_at).toLocaleString()}</div>
+                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">{new Date(s.created_at).toLocaleString()}</div>
                   </div>
                   <div className="text-right">
                     <div className="mono text-white font-black">{s.amount_gross}</div>
-                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">gross</div>
+                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">gross</div>
                   </div>
                 </div>
               ))}

@@ -39,7 +39,7 @@ export default function SettlementVisualizer() {
   }, []);
 
   return (
-    <div className="glass px-4 py-2 rounded-2xl flex items-center gap-4 border-zinc-800">
+    <div className="glass px-4 py-2 rounded-full flex items-center gap-4 border-white/10">
       <div className="relative w-8 h-8 flex items-center justify-center">
         <Layers size={18} className="text-zinc-200 absolute animate-pulse" />
         <svg className="w-8 h-8 -rotate-90">
@@ -53,12 +53,12 @@ export default function SettlementVisualizer() {
             fill="transparent"
             strokeDasharray={88}
             strokeDashoffset={88 - (88 * progress) / 100}
-            className="text-zinc-200 transition-all duration-100"
+            className="text-white transition-all duration-100"
           />
         </svg>
       </div>
       <div>
-        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Arc Block Height</div>
+        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.3em]">Arc Block Height</div>
         <div className="mono text-xs font-bold text-zinc-200">{blockHeight === null ? '—' : blockHeight.toLocaleString()}</div>
       </div>
     </div>
