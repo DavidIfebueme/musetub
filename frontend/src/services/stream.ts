@@ -2,6 +2,7 @@ import { ApiError, getApiBaseUrl } from './api';
 
 export type StreamResponse = {
   playback_url: string;
+  seconds_remaining?: number;
 };
 
 export type X402Accept = {
@@ -34,6 +35,7 @@ export class X402PaymentRequiredError extends Error {
 export type StreamResult = {
   playbackUrl: string;
   paymentResponseHeader?: string;
+  secondsRemaining?: number;
 };
 
 export function createPaymentSignature(accepted: X402Accept): string {
@@ -78,6 +80,7 @@ export async function getStreamPlaybackUrl(
   return {
     playbackUrl: (data as StreamResponse).playback_url,
     paymentResponseHeader,
+    secondsRemaining: (data as StreamResponse).seconds_remaining,
   };
 }
 
@@ -98,5 +101,6 @@ export async function autoPayStream(token: string, contentId: string): Promise<S
   return {
     playbackUrl: (data as StreamResponse).playback_url,
     paymentResponseHeader,
+    secondsRemaining: (data as StreamResponse).seconds_remaining,
   };
 }

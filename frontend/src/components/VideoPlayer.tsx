@@ -26,6 +26,8 @@ export default function VideoPlayer({
   const [paywall, setPaywall] = useState<X402PaymentRequiredBody | null>(null);
   const [paymentResponse, setPaymentResponse] = useState<string | null>(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
+  const [refillBusy, setRefillBusy] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
   const [contentDetails, setContentDetails] = useState<ContentResponse | null>(null);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const consumeIntervalRef = useRef<number | null>(null);
@@ -51,6 +53,7 @@ export default function VideoPlayer({
     setDetailsError(null);
     setSessionMinor(0);
     setIsRunning(false);
+    setSecondsRemaining(null);
     if (consumeIntervalRef.current !== null) {
       window.clearInterval(consumeIntervalRef.current);
       consumeIntervalRef.current = null;
@@ -82,7 +85,26 @@ export default function VideoPlayer({
     // Do not auto-consume credit on modal open.
   }, [item.id]);
 
-  async function consumeChunk(): Promise<boolean> {
+  async function topUpCredit(): Promise<boolean> {
+    if (refillBusy) return false;
+    setRefillBusy(true);
+    setError(null);
+    try {
+      const res = await autoPayStream(token, item.id);
+      setPaymentResponse(res.paymentResponseHeader ?? null);
+      if (typeof res.secondsRemaining === 'number') {
+        setSecondsRemaining(res.secondsRemaining);
+      }
+      return true;
+    } catch (e) {
+      setError(String(e));
+      return false;
+    } finally {
+      setRefillBusy(false);
+    }
+  }
+
+  async function consumeChunk(allowAutoPay = true): Promise<boolean> {
     if (unlockBusy) return false;
 
     setUnlockBusy(true);
@@ -93,10 +115,22 @@ export default function VideoPlayer({
       const res = await getStreamPlaybackUrl(token, item.id);
       setStreamUrl(res.playbackUrl);
       setPaymentResponse(res.paymentResponseHeader ?? null);
+      if (typeof res.secondsRemaining === 'number') {
+        setSecondsRemaining(res.secondsRemaining);
+        if (res.secondsRemaining <= 10) {
+          void topUpCredit();
+        }
+      }
       setSessionMinor((v) => v + item.price_per_second * 10);
       return true;
     } catch (e) {
       if (e instanceof X402PaymentRequiredError) {
+        if (allowAutoPay) {
+          const paid = await topUpCredit();
+          if (paid) {
+            return consumeChunk(false);
+          }
+        }
         setPaywall(e.body);
         return false;
       }
@@ -111,11 +145,7 @@ export default function VideoPlayer({
     if (unlockBusy) return;
     setError(null);
 
-    const res = await autoPayStream(token, item.id);
-    setPaymentResponse(res.paymentResponseHeader ?? null);
-    // Do not rely on /pay response for gating; /stream consumes credit.
-    // We still keep the returned header for debugging.
-    void res;
+    await topUpCredit();
   }
 
   async function startConsuming(): Promise<void> {

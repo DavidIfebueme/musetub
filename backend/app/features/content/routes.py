@@ -431,7 +431,10 @@ async def stream_content(
     channel.last_tick_at = now
 
     await session.commit()
-    return StreamResponse(playback_url=ipfs.playback_url(row.ipfs_cid))
+    return StreamResponse(
+        playback_url=ipfs.playback_url(row.ipfs_cid),
+        seconds_remaining=int(credit.seconds_remaining),
+    )
 
 
 @router.post("/{content_id}/pay", response_model=StreamResponse)
@@ -525,4 +528,7 @@ async def pay_stream_content(
     await session.commit()
 
     response.headers["Payment-Response"] = encode_payment_response({"transaction": tx_id, "payer": payer})
-    return StreamResponse(playback_url=ipfs.playback_url(content.ipfs_cid))
+    return StreamResponse(
+        playback_url=ipfs.playback_url(content.ipfs_cid),
+        seconds_remaining=int(credit.seconds_remaining),
+    )

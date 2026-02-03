@@ -59,6 +59,7 @@ export type WithdrawResponse = {
 
 export type StreamResponse = {
   playback_url: string;
+  seconds_remaining?: number;
 };
 
 export type UserSpendingResponse = {

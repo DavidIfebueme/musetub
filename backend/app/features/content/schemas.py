@@ -36,3 +36,4 @@ class ContentListItem(BaseModel):
 
 class StreamResponse(BaseModel):
     playback_url: str
+    seconds_remaining: int | None = None
