@@ -58,8 +58,8 @@ export default function SettlementVisualizer() {
         </svg>
       </div>
       <div>
-        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.3em]">Arc Block Height</div>
-        <div className="mono text-xs font-bold text-zinc-200">{blockHeight === null ? '—' : blockHeight.toLocaleString()}</div>
+        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.3em]">Network</div>
+        <div className="text-xs font-bold text-zinc-200">{blockHeight === null ? 'Connecting' : 'Live'}</div>
       </div>
     </div>
   );

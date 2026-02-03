@@ -8,6 +8,7 @@ import UserDashboard from './components/UserDashboard';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import BrandLogo from './components/BrandLogo';
+import { formatUsdcMinor, formatUsdcDecimal } from './utils/format';
 import { ContentItem } from './types';
 import { clearAuthToken, getMe, getStoredAuthToken, Me, login, register } from './services/auth';
 import { listContent } from './services/content';
@@ -34,6 +35,7 @@ export default function App() {
   const [unauthView, setUnauthView] = useState<'landing' | 'auth'>('landing');
   const [meLoading, setMeLoading] = useState(false);
   const [meError, setMeError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +69,15 @@ export default function App() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!me) return;
+    const seen = localStorage.getItem('musetub_onboarding_seen');
+    if (!seen) {
+      setShowOnboarding(true);
+      localStorage.setItem('musetub_onboarding_seen', 'true');
+    }
+  }, [me]);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,23 +261,19 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-6">
         {view === 'home' ? (
           <div className="space-y-12">
-            <header className="py-14 text-center space-y-6">
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.4em] text-zinc-400">
-                Live market
+            <header className="py-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Explore</div>
+                <h2 className="text-3xl md:text-5xl font-black tracking-tight">Pick a stream</h2>
               </div>
-              <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95]">
-                Stream. Settle. Repeat.
-              </h2>
-              <p className="text-zinc-400 max-w-2xl mx-auto font-medium text-lg leading-relaxed">
-                Pay only while you watch. Stop anytime with 10‑second credit windows.
-              </p>
+              <div className="text-zinc-400 text-sm">Per‑second pricing. Pause anytime.</div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {content.map((item) => (
                 <div
                   key={item.id}
-                  className="group glass rounded-[2.5rem] overflow-hidden border-white/10 hover:border-white/30 transition-all"
+                  className="group glass rounded-[2rem] overflow-hidden border-white/10 hover:border-white/30 transition-all"
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img
@@ -275,28 +282,24 @@ export default function App() {
                       className="w-full h-full object-cover grayscale-[35%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-70" />
-                    <div className="absolute top-6 left-6 bg-black/70 backdrop-blur-md text-[10px] font-black px-3 py-1.5 rounded-full border border-white/10 uppercase tracking-[0.3em]">
-                      IPFS
+                    <div className="absolute bottom-4 left-4 text-xs uppercase tracking-[0.25em] text-zinc-300">
+                      {formatUsdcMinor(item.price_per_second)} USDC / sec
                     </div>
                   </div>
-                  <div className="p-8 space-y-6">
+                  <div className="p-5 space-y-4">
                     <div className="flex justify-between items-start">
                       <div className="space-y-2">
-                        <h4 className="text-2xl font-black group-hover:text-white transition-colors leading-tight">
+                        <h4 className="text-lg font-black group-hover:text-white transition-colors leading-tight">
                           {item.title}
                         </h4>
-                        <p className="text-zinc-500 font-bold tracking-[0.3em] uppercase text-xs">
+                        <p className="text-zinc-500 font-bold tracking-[0.3em] uppercase text-[10px]">
                           {item.creator_id.slice(0, 8)}
                         </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white mono font-black text-lg">{item.price_per_second}</div>
-                        <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.3em]">Minor/Sec</div>
                       </div>
                     </div>
                     <button
                       onClick={() => setActiveContent(item)}
-                      className="w-full py-5 bg-white text-black rounded-3xl flex items-center justify-center gap-3 hover:bg-zinc-100 transition-all font-black text-sm tracking-[0.35em] uppercase"
+                      className="w-full py-3 bg-white text-black rounded-2xl flex items-center justify-center gap-3 hover:bg-zinc-100 transition-all font-black text-xs tracking-[0.35em] uppercase"
                     >
                       WATCH
                     </button>
@@ -328,7 +331,7 @@ export default function App() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Wallet</div>
-                <div className="mt-1 text-2xl font-black">Arc testnet USDC balance</div>
+                <div className="mt-1 text-2xl font-black">USDC balance</div>
               </div>
               <button
                 className="px-4 py-2 bg-white/10 rounded-xl text-zinc-300 hover:text-white transition-colors font-black text-xs"
@@ -344,14 +347,31 @@ export default function App() {
                 <div className="mono text-xs font-bold text-zinc-200 break-all">{me.wallet_address}</div>
               </div>
               <div className="glass rounded-2xl p-4 border-white/10">
-                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">USDC</div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Balance</div>
                 <div className="mono text-xl font-black text-white">
-                  {walletBalanceBusy ? '...' : walletBalance?.balance ?? '—'}
+                  {walletBalanceBusy ? '...' : formatUsdcDecimal(walletBalance?.balance)}
                 </div>
-                <div className="mt-1 mono text-[10px] font-bold text-zinc-500 break-all">minor: {walletBalance?.balance_minor ?? '—'}</div>
               </div>
               {walletBalanceError ? <div className="text-red-400 text-sm font-bold break-all">{walletBalanceError}</div> : null}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showOnboarding ? (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="w-full max-w-xl glass rounded-[2.5rem] p-8 border-white/10 text-center space-y-6">
+            <div className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Welcome</div>
+            <div className="text-3xl font-black">Pay only while you watch</div>
+            <div className="text-zinc-400 text-sm">
+              Start a video and your balance only moves while it plays. Pause anytime to stop charges.
+            </div>
+            <button
+              onClick={() => setShowOnboarding(false)}
+              className="px-6 py-3 rounded-2xl bg-white text-black font-black uppercase tracking-[0.35em] text-xs"
+            >
+              Got it
+            </button>
           </div>
         </div>
       ) : null}

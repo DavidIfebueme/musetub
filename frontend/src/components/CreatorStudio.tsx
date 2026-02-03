@@ -5,6 +5,7 @@ import { CreatorDashboardResponse } from '../types';
 import { getCreatorDashboard, withdrawCreator } from '../services/creators';
 import { uploadContent } from '../services/content';
 import { getCircleTransaction, CircleTransactionResponse } from '../services/wallets';
+import { formatUsdcMinor } from '../utils/format';
 
 export default function CreatorStudio({
   token,
@@ -29,6 +30,7 @@ export default function CreatorStudio({
   const [resolution, setResolution] = useState('1080p');
   const [bitrateTier, setBitrateTier] = useState('high');
   const [engagementIntent, setEngagementIntent] = useState('entertainment');
+  const [showUpload, setShowUpload] = useState(false);
 
   const totals = useMemo(() => {
     return {
@@ -137,7 +139,7 @@ export default function CreatorStudio({
           Creator studio
         </div>
         <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Ship content. Earn in real time.</h2>
-        <p className="text-zinc-400 max-w-2xl mx-auto font-medium text-lg leading-relaxed">Upload to IPFS and track live settlement.</p>
+        <p className="text-zinc-400 max-w-2xl mx-auto font-medium text-lg leading-relaxed">Publish new content and track earnings in real time.</p>
       </header>
 
       {error ? <div className="glass rounded-3xl p-6 border-white/10 text-red-400 font-bold break-all">{error}</div> : null}
@@ -145,11 +147,11 @@ export default function CreatorStudio({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass rounded-3xl p-8 border-white/10">
           <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Total gross</div>
-          <div className="mono text-3xl font-black text-white">{totals.gross}</div>
+          <div className="mono text-3xl font-black text-white">{formatUsdcMinor(totals.gross)} USDC</div>
         </div>
         <div className="glass rounded-3xl p-8 border-white/10">
           <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Creator share</div>
-          <div className="mono text-3xl font-black text-white">{totals.creator}</div>
+          <div className="mono text-3xl font-black text-white">{formatUsdcMinor(totals.creator)} USDC</div>
         </div>
         <button
           onClick={doWithdraw}
@@ -165,24 +167,17 @@ export default function CreatorStudio({
               <Wallet className="text-black" size={22} />
             </div>
           </div>
-          <div className="mt-4 text-zinc-500 text-sm font-semibold">Executes escrow withdraw when live.</div>
+          <div className="mt-4 text-zinc-500 text-sm font-semibold">Withdraw your available balance.</div>
 
           {withdrawTxId ? (
             <div className="mt-4 glass rounded-2xl p-4 border-white/10">
-              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Withdraw tx</div>
-              <div className="mt-2 mono text-xs text-zinc-200 break-all">{withdrawTxId}</div>
+              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Withdrawal status</div>
               {withdrawInfo ? (
                 <div className="mt-3 space-y-1">
                   <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Status</div>
                   <div className="mono text-xs font-bold text-zinc-200">{withdrawInfo.state}</div>
-                  {withdrawInfo.tx_hash ? (
-                    <div className="mono text-[10px] text-zinc-500 break-all">on-chain: {withdrawInfo.tx_hash}</div>
-                  ) : null}
                   {withdrawInfo.error_reason ? (
                     <div className="text-[10px] text-red-400 font-bold break-all">{withdrawInfo.error_reason}</div>
-                  ) : null}
-                  {withdrawInfo.error_details ? (
-                    <div className="text-[10px] text-red-400 font-bold break-all">{withdrawInfo.error_details}</div>
                   ) : null}
                 </div>
               ) : (
@@ -193,85 +188,17 @@ export default function CreatorStudio({
         </button>
       </div>
 
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Content</div>
+        <button
+          onClick={() => setShowUpload(true)}
+          className="px-5 py-3 rounded-2xl bg-white text-black font-black uppercase tracking-[0.35em] text-xs"
+        >
+          Upload new
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="glass rounded-[2.5rem] p-10 border-white/10">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Upload</div>
-              <div className="text-2xl font-black">New content</div>
-            </div>
-            <Upload className="text-white" size={22} />
-          </div>
-
-          <div className="space-y-4">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="title"
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-            />
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="description"
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                value={contentType}
-                onChange={(e) => setContentType(e.target.value)}
-                placeholder="content_type"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-              <input
-                value={durationSeconds}
-                onChange={(e) => setDurationSeconds(Number(e.target.value))}
-                placeholder="duration_seconds"
-                type="number"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <input
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                placeholder="resolution"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-              <input
-                value={bitrateTier}
-                onChange={(e) => setBitrateTier(e.target.value)}
-                placeholder="bitrate_tier"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-              <input
-                value={engagementIntent}
-                onChange={(e) => setEngagementIntent(e.target.value)}
-                placeholder="engagement_intent"
-                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-            </div>
-
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 text-zinc-400"
-            />
-
-            <button
-              onClick={submitUpload}
-              disabled={busy || !file || !title || !description}
-              className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-zinc-100 transition-all disabled:opacity-50"
-            >
-              {busy ? '...' : 'Upload'}
-            </button>
-
-            {error ? <div className="text-zinc-300 text-sm font-bold break-all">{error}</div> : null}
-          </div>
-        </div>
-
         <div className="space-y-6">
           <div className="glass rounded-[2.5rem] p-10 border-white/10">
             <div className="flex items-center justify-between mb-6">
@@ -290,8 +217,8 @@ export default function CreatorStudio({
                     <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] mono">{e.content_id.slice(0, 8)}...</div>
                   </div>
                   <div className="text-right">
-                    <div className="mono text-white font-black">{e.amount_creator}</div>
-                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">creator</div>
+                    <div className="mono text-white font-black">{formatUsdcMinor(e.amount_creator)} USDC</div>
+                    <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">earned</div>
                   </div>
                 </div>
               ))}
@@ -307,11 +234,10 @@ export default function CreatorStudio({
               {(dashboard?.recent_settlements ?? []).slice(0, 6).map((s) => (
                 <div key={s.id} className="flex items-center justify-between glass px-4 py-3 rounded-2xl border-white/10">
                   <div>
-                    <div className="mono text-xs text-zinc-300">{s.tx_hash ? `${s.tx_hash.slice(0, 10)}...` : 'simulated'}</div>
                     <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">{new Date(s.created_at).toLocaleString()}</div>
                   </div>
                   <div className="text-right">
-                    <div className="mono text-white font-black">{s.amount_gross}</div>
+                    <div className="mono text-white font-black">{formatUsdcMinor(s.amount_gross)} USDC</div>
                     <div className="text-[9px] text-zinc-600 uppercase font-black tracking-[0.35em]">gross</div>
                   </div>
                 </div>
@@ -323,6 +249,96 @@ export default function CreatorStudio({
           </div>
         </div>
       </div>
+
+      {showUpload ? (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setShowUpload(false)}>
+          <div className="w-full max-w-xl glass rounded-[2.5rem] p-8 border-white/10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Upload</div>
+                <div className="text-2xl font-black">New content</div>
+              </div>
+              <button
+                onClick={() => setShowUpload(false)}
+                className="px-3 py-2 rounded-xl bg-white/10 text-zinc-300 text-xs uppercase tracking-[0.3em]"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="title"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              />
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="description"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  value={contentType}
+                  onChange={(e) => setContentType(e.target.value)}
+                  placeholder="type"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+                <input
+                  value={durationSeconds}
+                  onChange={(e) => setDurationSeconds(Number(e.target.value))}
+                  placeholder="duration (sec)"
+                  type="number"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <input
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  placeholder="resolution"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+                <input
+                  value={bitrateTier}
+                  onChange={(e) => setBitrateTier(e.target.value)}
+                  placeholder="bitrate"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+                <input
+                  value={engagementIntent}
+                  onChange={(e) => setEngagementIntent(e.target.value)}
+                  placeholder="intent"
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+              </div>
+
+              <input
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 text-zinc-400"
+              />
+
+              <button
+                onClick={async () => {
+                  await submitUpload();
+                  setShowUpload(false);
+                }}
+                disabled={busy || !file || !title || !description}
+                className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-zinc-100 transition-all disabled:opacity-50"
+              >
+                {busy ? '...' : 'Upload'}
+              </button>
+
+              {error ? <div className="text-zinc-300 text-sm font-bold break-all">{error}</div> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

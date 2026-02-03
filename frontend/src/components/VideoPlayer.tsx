@@ -9,6 +9,7 @@ import {
   X402PaymentRequiredBody,
   X402PaymentRequiredError,
 } from '../services/stream';
+import { formatUsdcMinor } from '../utils/format';
 
 export default function VideoPlayer({
   token,
@@ -190,8 +191,8 @@ export default function VideoPlayer({
     setIsRunning(true);
   }
 
-  const accept = paywall?.accepts?.[0];
   const pricingExplanation = contentDetails?.pricing_explanation ?? null;
+  const chunkCost = item.price_per_second * 10;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
@@ -218,8 +219,8 @@ export default function VideoPlayer({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-8">
               <div className="w-full max-w-2xl glass rounded-3xl p-8 border border-white/10">
-                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">x402</div>
-                <div className="mt-1 text-2xl font-black">Payment required to stream</div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Unlock</div>
+                <div className="mt-1 text-2xl font-black">This video is pay‑per‑second</div>
 
                 {pricingExplanation ? (
                   <div className="mt-4 glass rounded-2xl p-4 border-white/10">
@@ -232,22 +233,16 @@ export default function VideoPlayer({
                   </div>
                 ) : null}
 
-                {accept ? (
-                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="glass rounded-2xl p-4 border-white/10">
-                      <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Amount</div>
-                      <div className="mono text-white font-bold break-all">{accept.amount}</div>
-                    </div>
-                    <div className="glass rounded-2xl p-4 border-white/10">
-                      <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Network</div>
-                      <div className="mono text-white font-bold break-all">{accept.network}</div>
-                    </div>
-                    <div className="glass rounded-2xl p-4 border-white/10 md:col-span-2">
-                      <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Pay to</div>
-                      <div className="mono text-white font-bold break-all">{accept.payTo}</div>
-                    </div>
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="glass rounded-2xl p-4 border-white/10">
+                    <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Per second</div>
+                    <div className="mono text-white font-bold">{formatUsdcMinor(item.price_per_second)} USDC</div>
                   </div>
-                ) : null}
+                  <div className="glass rounded-2xl p-4 border-white/10">
+                    <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Next 10s</div>
+                    <div className="mono text-white font-bold">{formatUsdcMinor(chunkCost)} USDC</div>
+                  </div>
+                </div>
 
                 <div className="mt-6 space-y-3">
                   <div className="flex gap-3">
@@ -277,12 +272,6 @@ export default function VideoPlayer({
                     </button>
                   </div>
                 </div>
-
-                {paymentResponse ? (
-                  <div className="mt-4 text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] break-all">
-                    Payment-Response: {paymentResponse}
-                  </div>
-                ) : null}
 
                 {error ? <div className="mt-3 text-red-400 text-sm font-bold break-all">{error}</div> : null}
               </div>
