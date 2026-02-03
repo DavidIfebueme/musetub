@@ -32,6 +32,8 @@ export default function App() {
   const [walletBalanceError, setWalletBalanceError] = useState<string | null>(null);
   const [walletBalanceBusy, setWalletBalanceBusy] = useState(false);
   const [unauthView, setUnauthView] = useState<'landing' | 'auth'>('landing');
+  const [meLoading, setMeLoading] = useState(false);
+  const [meError, setMeError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,18 +41,26 @@ export default function App() {
     async function load() {
       if (!token) {
         setMe(null);
+        setMeError(null);
+        setMeLoading(false);
         return;
       }
+
+      setMeLoading(true);
+      setMeError(null);
 
       const meResp = await getMe(token);
       if (!cancelled) {
         setMe(meResp);
+        setMeLoading(false);
       }
     }
 
     load().catch((e) => {
       setError(String(e));
       setMe(null);
+      setMeError(String(e));
+      setMeLoading(false);
     });
 
     return () => {
@@ -150,7 +160,24 @@ export default function App() {
   if (!me) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="glass rounded-3xl p-10">Loading...</div>
+        <div className="glass rounded-3xl p-10 border-white/10 space-y-4 text-center">
+          <div className="text-white font-black text-lg">{meLoading ? 'Loading...' : 'Unable to load account'}</div>
+          {meError ? <div className="text-red-400 text-sm font-bold break-all">{meError}</div> : null}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setToken(getStoredAuthToken())}
+              className="px-4 py-2 bg-white text-black rounded-xl font-black text-xs uppercase tracking-[0.3em]"
+            >
+              Retry
+            </button>
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-white/10 text-zinc-300 rounded-xl font-black text-xs uppercase tracking-[0.3em]"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
