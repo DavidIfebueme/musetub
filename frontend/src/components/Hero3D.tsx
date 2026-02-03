@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, MeshDistortMaterial, OrbitControls, Sphere } from '@react-three/drei';
+import { Float, MeshDistortMaterial, OrbitControls, Sphere, Stars } from '@react-three/drei';
 import { useMemo, useRef } from 'react';
 import { Group } from 'three';
 
@@ -40,8 +40,9 @@ export default function Hero3D() {
       <Canvas camera={{ position: [0, 0, 6], fov: 40 }} dpr={[1, 1.5]} gl={{ antialias: true }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[3, 5, 4]} intensity={1} />
+        <Stars radius={30} depth={20} count={600} factor={1} fade speed={0.3} />
         <Orb />
-        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.3} />
+        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.25} />
       </Canvas>
     </div>
   );

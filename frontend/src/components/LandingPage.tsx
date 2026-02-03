@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import BrandLogo from './BrandLogo';
 import Hero3D from './Hero3D';
@@ -24,8 +24,8 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
     };
   }, []);
 
-  const heroShift = useMemo(() => Math.min(scrollY / 10, 60), [scrollY]);
-  const glowShift = useMemo(() => Math.min(scrollY / 20, 30), [scrollY]);
+  const heroShift = useMemo(() => Math.min(scrollY / 6, 80), [scrollY]);
+  const glowShift = useMemo(() => Math.min(scrollY / 12, 50), [scrollY]);
 
   const sections = [
     { id: 'home', label: 'Home' },
@@ -36,9 +36,18 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative">
+      <div className="absolute inset-0 bg-black" />
       <div
-        className="absolute inset-0 bg-[radial-gradient(circle_at_top,#111827_0%,transparent_55%)]"
-        style={{ transform: `translateY(${glowShift}px)` }}
+        className="absolute -top-32 left-10 w-64 h-64 rounded-full bg-slate-900/40 blur-3xl"
+        style={{ transform: `translate3d(0, ${glowShift}px, 0)` }}
+      />
+      <div
+        className="absolute top-24 right-12 w-48 h-48 rounded-full bg-slate-800/30 blur-3xl"
+        style={{ transform: `translate3d(0, ${glowShift * 1.3}px, 0)` }}
+      />
+      <div
+        className="absolute top-[520px] left-1/2 w-72 h-72 rounded-full bg-slate-900/30 blur-[80px]"
+        style={{ transform: `translate3d(-50%, ${glowShift * 1.8}px, 0)` }}
       />
       <Hero3D />
       <div className="relative z-10">
@@ -97,7 +106,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
           ) : null}
 
           <section id="home" className="mt-20 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-12 items-center">
-            <div className="space-y-8" style={{ transform: `translateY(${heroShift}px)` }}>
+            <div className="space-y-8" style={{ transform: `translate3d(0, ${heroShift}px, 0)` }}>
               <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.4em] text-zinc-400">
                 only pay for what you watch
               </div>
@@ -123,14 +132,20 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
               </div>
             </div>
             <div className="space-y-6">
-              <div className="rounded-[2.5rem] border border-white/10 bg-white/5 p-8 backdrop-blur">
+              <div
+                className="rounded-[2.5rem] border border-white/10 bg-white/5 p-8 backdrop-blur"
+                style={{ transform: `translate3d(0, ${Math.min(scrollY / 16, 40)}px, 0)` }}
+              >
                 <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Pay less</div>
                 <div className="mt-4 text-3xl font-black">You control the meter</div>
                 <div className="mt-2 text-zinc-400 text-sm leading-relaxed">
                   Charges scale with real time watched, not fixed plans or long commitments.
                 </div>
               </div>
-              <div className="rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-8 backdrop-blur">
+              <div
+                className="rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-8 backdrop-blur"
+                style={{ transform: `translate3d(0, ${Math.min(scrollY / 12, 50)}px, 0)` }}
+              >
                 <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Instant access</div>
                 <div className="mt-4 text-3xl font-black">Tap play and go</div>
                 <div className="mt-2 text-zinc-400 text-sm leading-relaxed">
@@ -158,7 +173,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
               <div
                 key={item.title}
                 className="glass rounded-[2.5rem] p-8 border-white/10"
-                style={{ transform: `translateY(${Math.min(scrollY / 18 + index * 8, 40)}px)` }}
+                style={{ transform: `translate3d(0, ${Math.min(scrollY / 10 + index * 16, 90)}px, 0)` }}
               >
                 <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Step {index + 1}</div>
                 <div className="mt-4 text-2xl font-black">{item.title}</div>
@@ -168,7 +183,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
           </section>
 
           <section id="get-started" className="mt-28 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
-            <div className="space-y-6">
+            <div className="space-y-6" style={{ transform: `translate3d(0, ${Math.min(scrollY / 14, 60)}px, 0)` }}>
               <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Get started</div>
               <div className="text-4xl md:text-5xl font-black leading-tight">Your first stream is seconds away.</div>
               <div className="text-zinc-400 text-lg">
@@ -189,7 +204,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
                 </a>
               </div>
             </div>
-            <div className="glass rounded-[2.5rem] p-10 border-white/10">
+            <div className="glass rounded-[2.5rem] p-10 border-white/10" style={{ transform: `translate3d(0, ${Math.min(scrollY / 10, 80)}px, 0)` }}>
               <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">What you get</div>
               <div className="mt-6 space-y-4 text-zinc-300">
                 <div className="flex items-center justify-between">
@@ -213,7 +228,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
           </section>
 
           <section id="contact" className="mt-28 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
-            <div className="space-y-6">
+            <div className="space-y-6" style={{ transform: `translate3d(0, ${Math.min(scrollY / 16, 50)}px, 0)` }}>
               <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Contact</div>
               <div className="text-4xl md:text-5xl font-black">Let’s hear from you.</div>
               <div className="text-zinc-400 text-lg">
@@ -222,6 +237,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             </div>
             <form
               className="glass rounded-[2.5rem] p-8 border-white/10 space-y-4"
+              style={{ transform: `translate3d(0, ${Math.min(scrollY / 12, 70)}px, 0)` }}
               onSubmit={(e) => {
                 e.preventDefault();
                 const subject = encodeURIComponent('MuseTub message');
