@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Wallet, Zap } from 'lucide-react';
+import { LogOut, Wallet } from 'lucide-react';
 
 import SettlementVisualizer from './components/SettlementVisualizer';
 import VideoPlayer from './components/VideoPlayer';
 import CreatorStudio from './components/CreatorStudio';
 import UserDashboard from './components/UserDashboard';
+import LandingPage from './components/LandingPage';
+import AuthPage from './components/AuthPage';
+import BrandLogo from './components/BrandLogo';
 import { ContentItem } from './types';
 import { clearAuthToken, getMe, getStoredAuthToken, Me, login, register } from './services/auth';
 import { listContent } from './services/content';
@@ -28,6 +31,7 @@ export default function App() {
   const [walletBalance, setWalletBalance] = useState<UsdcBalanceResponse | null>(null);
   const [walletBalanceError, setWalletBalanceError] = useState<string | null>(null);
   const [walletBalanceBusy, setWalletBalanceBusy] = useState(false);
+  const [unauthView, setUnauthView] = useState<'landing' | 'auth'>('landing');
 
   useEffect(() => {
     let cancelled = false;
@@ -122,80 +126,24 @@ export default function App() {
   }
 
   if (!token) {
+    if (unauthView === 'landing') {
+      return <LandingPage onEnter={() => setUnauthView('auth')} />;
+    }
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="max-w-md w-full glass rounded-[3rem] p-12 text-center space-y-8 border-emerald-500/20 shadow-2xl shadow-emerald-500/10">
-          <div className="w-20 h-20 bg-emerald-500 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-emerald-500/20 rotate-12 transition-transform hover:rotate-0 duration-500">
-            <Zap className="text-white" fill="currentColor" size={40} />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-black tracking-tighter italic">MuseTub</h1>
-            <p className="text-zinc-500 font-medium">Pay-Per-Second Media</p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <button
-                className={
-                  authMode === 'login'
-                    ? 'flex-1 py-3 bg-white text-black font-black rounded-2xl'
-                    : 'flex-1 py-3 glass border-zinc-800 text-white font-black rounded-2xl'
-                }
-                onClick={() => setAuthMode('login')}
-                disabled={busy}
-              >
-                Login
-              </button>
-              <button
-                className={
-                  authMode === 'register'
-                    ? 'flex-1 py-3 bg-white text-black font-black rounded-2xl'
-                    : 'flex-1 py-3 glass border-zinc-800 text-white font-black rounded-2xl'
-                }
-                onClick={() => setAuthMode('register')}
-                disabled={busy}
-              >
-                Register
-              </button>
-            </div>
-
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email"
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
-            />
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="password"
-              type="password"
-              className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-zinc-800"
-            />
-
-            {authMode === 'register' ? (
-              <label className="flex items-center gap-2 text-zinc-400 text-sm font-bold justify-center">
-                <input type="checkbox" checked={isCreator} onChange={(e) => setIsCreator(e.target.checked)} />
-                Creator account
-              </label>
-            ) : null}
-
-            <button
-              onClick={submitAuth}
-              disabled={busy || !email || !password}
-              className="w-full py-4 bg-emerald-500 text-black font-black rounded-2xl hover:bg-emerald-400 transition-all disabled:opacity-50"
-            >
-              {busy ? '...' : authMode === 'login' ? 'Login' : 'Register'}
-            </button>
-
-            {error ? <div className="text-red-400 text-sm font-bold">{error}</div> : null}
-          </div>
-
-          <div className="pt-4 space-y-2">
-            <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-black">Arc • USDC • IPFS</p>
-          </div>
-        </div>
-      </div>
+      <AuthPage
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        busy={busy}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        isCreator={isCreator}
+        setIsCreator={setIsCreator}
+        submitAuth={submitAuth}
+        error={error}
+        onBack={() => setUnauthView('landing')}
+      />
     );
   }
 
@@ -209,11 +157,11 @@ export default function App() {
 
     return (
       <div className="min-h-screen pb-24 md:pb-0 selection:bg-zinc-200/10">
-      <nav className="glass sticky top-0 z-40 px-6 py-4 flex justify-between items-center border-b border-zinc-800">
+          <nav className="glass sticky top-0 z-40 px-6 py-4 flex justify-between items-center border-b border-white/10">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setView('home')}>
-            <Zap className="text-zinc-200 group-hover:scale-110 transition-transform" fill="currentColor" size={24} />
-            <span className="text-2xl font-black tracking-tighter italic">MuseTub</span>
+                <BrandLogo size={32} />
+                <span className="text-2xl font-black tracking-tight">MuseTub</span>
           </div>
           <SettlementVisualizer />
         </div>
