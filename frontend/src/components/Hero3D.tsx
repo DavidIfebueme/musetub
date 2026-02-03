@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { useMemo, useRef } from 'react';
-import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, Vector3 } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Group, LineSegments, Vector3 } from 'three';
 
 function Moon() {
   const group = useRef<Group>(null);
@@ -32,43 +32,73 @@ function Moon() {
   );
 }
 
-function Birds() {
-  const group = useRef<Group>(null);
-  const birds = useMemo(() => {
-    return Array.from({ length: 12 }).map((_, index) => {
-      const geometry = new BufferGeometry();
-      const size = 0.08 + Math.random() * 0.08;
-      const wing = size * 0.6;
-      const vertices = new Float32Array([
-        0, 0, 0,
-        -wing, size, 0,
-        wing, size, 0,
-      ]);
-      geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
-      const material = new MeshBasicMaterial({ color: '#e2e8f0' });
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(-4 + Math.random() * 8, -0.5 + Math.random() * 2, -1 - Math.random() * 2);
-      mesh.rotation.z = Math.random() * Math.PI;
-      mesh.userData = { speed: 0.1 + Math.random() * 0.2, offset: Math.random() * Math.PI * 2 };
-      return mesh;
-    });
-  }, []);
+type BirdSpec = {
+  id: number;
+  size: number;
+  speed: number;
+  offset: number;
+  x: number;
+  y: number;
+  z: number;
+  rotation: number;
+};
+
+function Bird({ spec }: { spec: BirdSpec }) {
+  const lineRef = useRef<LineSegments>(null);
+  const geometry = useMemo(() => {
+    const geo = new BufferGeometry();
+    const wing = spec.size * 0.6;
+    const vertices = new Float32Array([
+      0, 0, 0,
+      -wing, spec.size, 0,
+      0, 0, 0,
+      wing, spec.size, 0,
+    ]);
+    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    return geo;
+  }, [spec.size]);
 
   useFrame((state) => {
-    if (!group.current) return;
+    if (!lineRef.current) return;
     const t = state.clock.getElapsedTime();
-    group.current.children.forEach((child) => {
-      const speed = child.userData.speed as number;
-      const offset = child.userData.offset as number;
-      child.position.x += speed * 0.01;
-      child.position.y += Math.sin(t * 2 + offset) * 0.001;
-      if (child.position.x > 5) {
-        child.position.x = -5;
-      }
-    });
+    lineRef.current.position.x += spec.speed * 0.01;
+    lineRef.current.position.y += Math.sin(t * 2 + spec.offset) * 0.001;
+    if (lineRef.current.position.x > 5) {
+      lineRef.current.position.x = -5;
+    }
   });
 
-  return <group ref={group}>{birds.map((mesh) => mesh)}</group>;
+  return (
+    <lineSegments ref={lineRef} position={[spec.x, spec.y, spec.z]} rotation={[0, 0, spec.rotation]}>
+      <primitive object={geometry} attach="geometry" />
+      <lineBasicMaterial color="#e2e8f0" transparent opacity={0.8} />
+    </lineSegments>
+  );
+}
+
+function Birds() {
+  const birds = useMemo<BirdSpec[]>(
+    () =>
+      Array.from({ length: 12 }).map((_, index) => ({
+        id: index,
+        size: 0.08 + Math.random() * 0.08,
+        speed: 0.1 + Math.random() * 0.2,
+        offset: Math.random() * Math.PI * 2,
+        x: -4 + Math.random() * 8,
+        y: -0.5 + Math.random() * 2,
+        z: -1 - Math.random() * 2,
+        rotation: Math.random() * Math.PI,
+      })),
+    [],
+  );
+
+  return (
+    <group>
+      {birds.map((spec) => (
+        <Bird key={spec.id} spec={spec} />
+      ))}
+    </group>
+  );
 }
 
 export default function Hero3D() {
