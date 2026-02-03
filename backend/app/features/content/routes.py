@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from uuid import uuid4
 
+from Crypto.Hash import keccak
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
@@ -142,6 +143,51 @@ async def _get_gateway_supported_kinds(*, sidecar_url: str) -> dict | None:
 
 def _unauthorized() -> HTTPException:
     return HTTPException(status_code=401, detail="Unauthorized")
+
+
+async def _arc_rpc(method: str, params: list) -> dict:
+    if not settings.arc_rpc_url:
+        raise RuntimeError("ARC RPC not configured")
+
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": method,
+        "params": params,
+    }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(settings.arc_rpc_url, json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+
+    if isinstance(data, dict) and data.get("error"):
+        raise RuntimeError(f"ARC RPC error: {data['error']}")
+
+    if not isinstance(data, dict) or "result" not in data:
+        raise RuntimeError("ARC RPC returned no result")
+
+    return data
+
+
+def _function_selector(signature: str) -> str:
+    k = keccak.new(digest_bits=256)
+    k.update(signature.encode("utf-8"))
+    return "0x" + k.digest()[:4].hex()
+
+
+async def _get_escrow_usdc_address(escrow_address: str) -> str:
+    selector = _function_selector("usdc()")
+    call = {
+        "to": escrow_address,
+        "data": selector,
+    }
+    data = await _arc_rpc("eth_call", [call, "latest"])
+    result = data.get("result")
+    if not isinstance(result, str) or not result.startswith("0x"):
+        raise RuntimeError("ARC RPC returned invalid eth_call result")
+    addr = "0x" + result[-40:]
+    return addr.lower()
 
 
 async def _require_user_for_stream(request: Request, session: AsyncSession):
@@ -473,6 +519,15 @@ async def pay_stream_content(
             raise HTTPException(status_code=400, detail="User wallet not available")
 
         chain = ChainClient.from_settings()
+        escrow_usdc = await _get_escrow_usdc_address(chain.config.escrow_address)
+        if escrow_usdc != chain.config.usdc_address.lower():
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Escrow USDC address mismatch. "
+                    f"escrow={escrow_usdc} expected={chain.config.usdc_address.lower()}"
+                ),
+            )
 
         nonce = "0x" + secrets.token_hex(32)
         now = _utcnow()
