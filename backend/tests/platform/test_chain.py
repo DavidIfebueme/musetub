@@ -37,7 +37,7 @@ def test_erc3009_typed_data_shape() -> None:
             chain_id=123,
             usdc_address="0x0000000000000000000000000000000000000001",
             escrow_address="0x0000000000000000000000000000000000000002",
-            usdc_name="USD Coin",
+            usdc_name="USDC",
             usdc_version="2",
         )
     )

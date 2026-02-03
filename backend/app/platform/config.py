@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     x402_gateway_sidecar_url: str | None = None
     x402_default_seller_address: str | None = None
 
-    usdc_name: str = "USD Coin"
+    usdc_name: str = "USDC"
     usdc_version: str = "2"
 
 

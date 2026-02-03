@@ -99,7 +99,7 @@ async def _get_escrow_creator_balance_minor(creator_wallet_address: str) -> int:
     result = await _arc_eth_call(settings.escrow_address, calldata)
     try:
         return int(result, 16)
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Arc RPC returned invalid value: {result}") from exc
 
 
