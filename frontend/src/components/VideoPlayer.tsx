@@ -35,7 +35,7 @@ export default function VideoPlayer({
   const playGuardRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const rateLabel = useMemo(() => String(item.price_per_second), [item.price_per_second]);
+  const rateLabel = useMemo(() => formatUsdcMinor(item.price_per_second), [item.price_per_second]);
 
   useEffect(() => {
     return () => {
@@ -281,10 +281,10 @@ export default function VideoPlayer({
 
         <div className="p-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black italic">{item.title}</h2>
+            <h2 className="text-2xl font-black">{item.title}</h2>
             <div className="flex items-center gap-2 text-zinc-500 text-sm font-bold uppercase tracking-widest">
               <Activity size={14} className="text-emerald-500" />
-              IPFS <span className="text-zinc-300 mono">{item.id.slice(0, 10)}...</span>
+              Live
             </div>
             {streamUrl ? null : paywall ? (
               <div className="text-emerald-400 text-xs font-black uppercase tracking-widest">Awaiting payment…</div>
@@ -295,12 +295,12 @@ export default function VideoPlayer({
           <div className="flex gap-6">
             <div className="text-center">
               <div className="text-[10px] text-zinc-500 font-black uppercase">Rate</div>
-              <div className="mono text-emerald-400 font-bold">{rateLabel} minor/s</div>
+              <div className="mono text-emerald-400 font-bold">{rateLabel} USDC/s</div>
             </div>
             <div className="w-px h-10 bg-zinc-800"></div>
             <div className="text-center">
               <div className="text-[10px] text-zinc-500 font-black uppercase">Session</div>
-              <div className="mono text-white font-bold">{sessionMinor}</div>
+              <div className="mono text-white font-bold">{formatUsdcMinor(sessionMinor)} USDC</div>
             </div>
           </div>
         </div>
@@ -308,7 +308,7 @@ export default function VideoPlayer({
         <div className="bg-emerald-500/5 p-4 flex justify-between items-center px-10 border-t border-zinc-800">
           <div className="flex items-center gap-3 text-emerald-400 text-xs font-bold uppercase tracking-tighter">
             <ShieldCheck size={18} />
-            Streaming payments active
+            You control the meter
           </div>
           <div className="flex gap-3">
             <button

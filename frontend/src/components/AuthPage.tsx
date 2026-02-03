@@ -57,8 +57,8 @@ export default function AuthPage({
             </h1>
             <p className="text-zinc-400 text-lg max-w-xl">
               {authMode === 'login'
-                ? 'Resume your streams and track micro‑settled sessions.'
-                : 'Spin up your creator wallet and publish to IPFS.'}
+                ? 'Pick up where you left off and keep watching on your terms.'
+                : 'Create your creator space and start sharing content.'}
             </p>
             <div className="flex gap-3">
               <button
