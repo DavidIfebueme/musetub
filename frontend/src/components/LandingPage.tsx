@@ -25,7 +25,6 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   }, []);
 
   const heroShift = useMemo(() => Math.min(scrollY / 6, 80), [scrollY]);
-  const glowShift = useMemo(() => Math.min(scrollY / 12, 50), [scrollY]);
 
   const sections = [
     { id: 'home', label: 'Home' },
@@ -37,18 +36,6 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative">
       <div className="absolute inset-0 bg-black" />
-      <div
-        className="absolute -top-32 left-10 w-64 h-64 rounded-full bg-slate-900/40 blur-3xl"
-        style={{ transform: `translate3d(0, ${glowShift}px, 0)` }}
-      />
-      <div
-        className="absolute top-24 right-12 w-48 h-48 rounded-full bg-slate-800/30 blur-3xl"
-        style={{ transform: `translate3d(0, ${glowShift * 1.3}px, 0)` }}
-      />
-      <div
-        className="absolute top-[520px] left-1/2 w-72 h-72 rounded-full bg-slate-900/30 blur-[80px]"
-        style={{ transform: `translate3d(-50%, ${glowShift * 1.8}px, 0)` }}
-      />
       <Hero3D />
       <div className="relative z-10">
         <div className="max-w-6xl mx-auto px-6 pt-8 pb-20">
