@@ -8,8 +8,6 @@ export default function AuthPage({
   setEmail,
   password,
   setPassword,
-  isCreator,
-  setIsCreator,
   submitAuth,
   error,
   onBack,
@@ -21,8 +19,6 @@ export default function AuthPage({
   setEmail: (value: string) => void;
   password: string;
   setPassword: (value: string) => void;
-  isCreator: boolean;
-  setIsCreator: (value: boolean) => void;
   submitAuth: () => void;
   error: string | null;
   onBack: () => void;
@@ -53,12 +49,12 @@ export default function AuthPage({
               Access portal
             </div>
             <h1 className="text-4xl md:text-6xl font-black leading-[0.95]">
-              {authMode === 'login' ? 'Welcome back.' : 'Create your studio.'}
+              {authMode === 'login' ? 'Welcome back.' : 'Create your account.'}
             </h1>
             <p className="text-zinc-400 text-lg max-w-xl">
               {authMode === 'login'
                 ? 'Pick up where you left off and keep watching on your terms.'
-                : 'Create your creator space and start sharing content.'}
+                : 'Create an account to start watching instantly.'}
             </p>
             <div className="flex gap-3">
               <button
@@ -103,10 +99,13 @@ export default function AuthPage({
                 className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
               {authMode === 'register' ? (
-                <label className="flex items-center gap-3 text-zinc-400 text-xs font-semibold">
-                  <input type="checkbox" checked={isCreator} onChange={(e) => setIsCreator(e.target.checked)} />
-                  Creator account
-                </label>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-zinc-400">
+                  Creator access is limited right now. For beta creator access, contact us at{' '}
+                  <a href="mailto:davidifebueme@gmail.com" className="text-white font-semibold">
+                    davidifebueme@gmail.com
+                  </a>
+                  .
+                </div>
               ) : null}
               <button
                 onClick={submitAuth}

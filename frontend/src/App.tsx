@@ -25,7 +25,6 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isCreator, setIsCreator] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
   const [walletPanelOpen, setWalletPanelOpen] = useState(false);
@@ -112,7 +111,7 @@ export default function App() {
     setError(null);
 
     try {
-      const resp = authMode === 'login' ? await login(email, password) : await register(email, password, isCreator);
+      const resp = authMode === 'login' ? await login(email, password) : await register(email, password, false);
       setToken(resp.access_token);
     } catch (e) {
       setError(String(e));
@@ -159,8 +158,6 @@ export default function App() {
         setEmail={setEmail}
         password={password}
         setPassword={setPassword}
-        isCreator={isCreator}
-        setIsCreator={setIsCreator}
         submitAuth={submitAuth}
         error={error}
         onBack={() => setUnauthView('landing')}
