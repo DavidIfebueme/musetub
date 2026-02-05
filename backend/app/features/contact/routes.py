@@ -18,6 +18,8 @@ async def contact_message(body: ContactMessageRequest) -> ContactResponse:
         await send_contact_email(subject=subject, body=message, reply_to=body.email)
     except EmailServiceError as exc:
         raise _service_unavailable(str(exc)) from exc
+    except Exception as exc:
+        raise _service_unavailable(f"Email delivery failed: {exc}") from exc
 
     return ContactResponse(status="sent")
 
@@ -37,5 +39,7 @@ async def creator_access(body: CreatorAccessRequest) -> ContactResponse:
         await send_contact_email(subject=subject, body=message, reply_to=body.email)
     except EmailServiceError as exc:
         raise _service_unavailable(str(exc)) from exc
+    except Exception as exc:
+        raise _service_unavailable(f"Email delivery failed: {exc}") from exc
 
     return ContactResponse(status="sent")
