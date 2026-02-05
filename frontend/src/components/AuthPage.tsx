@@ -100,9 +100,9 @@ export default function AuthPage({
               />
               {authMode === 'register' ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-zinc-400">
-                  Creator access is limited right now. For beta creator access, contact us at{' '}
-                  <a href="mailto:davidifebueme@gmail.com" className="text-white font-semibold">
-                    davidifebueme@gmail.com
+                  Creator access is limited right now.{' '}
+                  <a href="/#creator-beta" onClick={() => onBack()} className="text-white font-semibold underline underline-offset-2">
+                    Request beta creator access here
                   </a>
                   .
                 </div>
