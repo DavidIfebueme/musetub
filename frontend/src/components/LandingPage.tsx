@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { requestCreatorAccess, sendContactMessage } from '../services/contact';
+
 import BrandLogo from './BrandLogo';
 import Hero3D from './Hero3D';
 
@@ -9,6 +11,17 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactStatus, setContactStatus] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
+
+  const [creatorName, setCreatorName] = useState('');
+  const [creatorEmail, setCreatorEmail] = useState('');
+  const [creatorLink, setCreatorLink] = useState('');
+  const [creatorMessage, setCreatorMessage] = useState('');
+  const [creatorBusy, setCreatorBusy] = useState(false);
+  const [creatorStatus, setCreatorStatus] = useState<string | null>(null);
+  const [creatorError, setCreatorError] = useState<string | null>(null);
 
   useEffect(() => {
     let raf = 0;
@@ -30,6 +43,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
     { id: 'home', label: 'Home' },
     { id: 'how', label: 'How it works' },
     { id: 'get-started', label: 'Get started' },
+    { id: 'creator-beta', label: 'Creator beta' },
     { id: 'contact', label: 'Contact' },
   ];
 
@@ -214,22 +228,109 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             </div>
           </section>
 
-          <section id="contact" className="mt-28 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
+          <section id="creator-beta" className="mt-28 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
             <div className="space-y-6" style={{ transform: `translate3d(0, ${Math.min(scrollY / 16, 50)}px, 0)` }}>
-              <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Contact</div>
-              <div className="text-4xl md:text-5xl font-black">Let’s hear from you.</div>
+              <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Creator beta</div>
+              <div className="text-4xl md:text-5xl font-black">Request early creator access.</div>
               <div className="text-zinc-400 text-lg">
-                Have feedback or want early creator access? Send a note.
+                Tell us a bit about your content and we will follow up with onboarding details.
               </div>
             </div>
             <form
               className="glass rounded-[2.5rem] p-8 border-white/10 space-y-4"
               style={{ transform: `translate3d(0, ${Math.min(scrollY / 12, 70)}px, 0)` }}
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                const subject = encodeURIComponent('MuseTub message');
-                const body = encodeURIComponent(`From: ${name}\nEmail: ${email}\n\n${message}`);
-                window.location.href = `mailto:davidifebueme@gmail.com?subject=${subject}&body=${body}`;
+                if (creatorBusy) return;
+                setCreatorBusy(true);
+                setCreatorError(null);
+                setCreatorStatus(null);
+                try {
+                  await requestCreatorAccess({
+                    name: creatorName,
+                    email: creatorEmail,
+                    channel_link: creatorLink || undefined,
+                    message: creatorMessage || undefined,
+                  });
+                  setCreatorStatus('Request sent. We will follow up soon.');
+                  setCreatorName('');
+                  setCreatorEmail('');
+                  setCreatorLink('');
+                  setCreatorMessage('');
+                } catch (err) {
+                  setCreatorError(String(err));
+                } finally {
+                  setCreatorBusy(false);
+                }
+              }}
+            >
+              <input
+                value={creatorName}
+                onChange={(e) => setCreatorName(e.target.value)}
+                placeholder="name"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                required
+              />
+              <input
+                value={creatorEmail}
+                onChange={(e) => setCreatorEmail(e.target.value)}
+                placeholder="email"
+                type="email"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                required
+              />
+              <input
+                value={creatorLink}
+                onChange={(e) => setCreatorLink(e.target.value)}
+                placeholder="channel link (optional)"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              />
+              <textarea
+                value={creatorMessage}
+                onChange={(e) => setCreatorMessage(e.target.value)}
+                placeholder="tell us about your content"
+                className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 min-h-[140px] focus:outline-none focus:ring-2 focus:ring-white/30"
+              />
+              <button
+                type="submit"
+                disabled={creatorBusy}
+                className="w-full py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs disabled:opacity-50"
+              >
+                {creatorBusy ? 'Sending...' : 'Request access'}
+              </button>
+              {creatorStatus ? <div className="text-emerald-300 text-sm font-semibold">{creatorStatus}</div> : null}
+              {creatorError ? <div className="text-red-400 text-sm font-semibold break-all">{creatorError}</div> : null}
+            </form>
+          </section>
+
+          <section id="contact" className="mt-28 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
+            <div className="space-y-6" style={{ transform: `translate3d(0, ${Math.min(scrollY / 16, 50)}px, 0)` }}>
+              <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Contact</div>
+              <div className="text-4xl md:text-5xl font-black">Let’s hear from you.</div>
+              <div className="text-zinc-400 text-lg">
+                Have feedback, press, or partnership ideas? Send a note.
+              </div>
+            </div>
+            <form
+              className="glass rounded-[2.5rem] p-8 border-white/10 space-y-4"
+              style={{ transform: `translate3d(0, ${Math.min(scrollY / 12, 70)}px, 0)` }}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (contactBusy) return;
+                setContactBusy(true);
+                setContactError(null);
+                setContactStatus(null);
+                try {
+                  await sendContactMessage({ name, email, message });
+                  setContactStatus('Message sent. We will reply soon.');
+                  setName('');
+                  setEmail('');
+                  setMessage('');
+                } catch (err) {
+                  setContactError(String(err));
+                } finally {
+                  setContactBusy(false);
+                }
               }}
             >
               <input
@@ -256,10 +357,13 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
               />
               <button
                 type="submit"
-                className="w-full py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs"
+                disabled={contactBusy}
+                className="w-full py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs disabled:opacity-50"
               >
-                Send message
+                {contactBusy ? 'Sending...' : 'Send message'}
               </button>
+              {contactStatus ? <div className="text-emerald-300 text-sm font-semibold">{contactStatus}</div> : null}
+              {contactError ? <div className="text-red-400 text-sm font-semibold break-all">{contactError}</div> : null}
             </form>
           </section>
 
