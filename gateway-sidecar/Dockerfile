@@ -5,7 +5,7 @@ WORKDIR /app
 ARG CLOUDSMITH_TOKEN
 ENV CLOUDSMITH_TOKEN=$CLOUDSMITH_TOKEN
 
-COPY package.json package-lock.json ./
+COPY .npmrc package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
