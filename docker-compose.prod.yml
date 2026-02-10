@@ -37,6 +37,8 @@ services:
   gateway-sidecar:
     build:
       context: ./gateway-sidecar
+      args:
+        CLOUDSMITH_TOKEN: ${CLOUDSMITH_TOKEN}
     container_name: musetub-gateway-sidecar
     env_file:
       - ./backend/.env

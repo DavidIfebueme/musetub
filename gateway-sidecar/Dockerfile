@@ -2,6 +2,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+ARG CLOUDSMITH_TOKEN
+ENV CLOUDSMITH_TOKEN=$CLOUDSMITH_TOKEN
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
