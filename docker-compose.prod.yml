@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: musetub-postgres
+    env_file:
+      - .env.docker
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: musetub-redis
+    restart: unless-stopped
+
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: musetub-ipfs
+    volumes:
+      - ipfs-data:/data/ipfs
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: musetub-backend
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - postgres
+      - redis
+      - ipfs
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  gateway-sidecar:
+    build:
+      context: ./gateway-sidecar
+    container_name: musetub-gateway-sidecar
+    env_file:
+      - ./backend/.env
+    environment:
+      API_BASE_URL: http://backend:8000/api/v1
+      PORT: "4010"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    container_name: musetub-frontend
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:8081:80"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  ipfs-data:

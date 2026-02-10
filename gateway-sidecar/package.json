@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
     "pay-stream": "tsx src/pay-stream.ts"
   },
   "dependencies": {
