@@ -2,11 +2,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-ARG CLOUDSMITH_TOKEN
-ENV CLOUDSMITH_TOKEN=$CLOUDSMITH_TOKEN
-
-COPY .npmrc package.json package-lock.json ./
-RUN echo "TOKEN_LENGTH=$(echo -n $CLOUDSMITH_TOKEN | wc -c)" && echo "TOKEN_FIRST3=${CLOUDSMITH_TOKEN:0:3}" && cat .npmrc && npm ci
+COPY package.json package-lock.json ./
+COPY vendor/ ./vendor/
+RUN npm ci
 
 COPY . .
 RUN npm run build
