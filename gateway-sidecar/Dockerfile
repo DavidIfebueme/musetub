@@ -6,7 +6,7 @@ ARG CLOUDSMITH_TOKEN
 ENV CLOUDSMITH_TOKEN=$CLOUDSMITH_TOKEN
 
 COPY .npmrc package.json package-lock.json ./
-RUN npm ci
+RUN echo "TOKEN_LENGTH=$(echo -n $CLOUDSMITH_TOKEN | wc -c)" && echo "TOKEN_FIRST3=${CLOUDSMITH_TOKEN:0:3}" && cat .npmrc && npm ci
 
 COPY . .
 RUN npm run build
