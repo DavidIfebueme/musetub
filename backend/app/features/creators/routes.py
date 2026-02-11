@@ -111,6 +111,18 @@ async def creator_dashboard(
     if not getattr(user, "is_creator", False):
         raise _forbidden()
 
+    content_count_row = await session.execute(
+        select(func.count()).select_from(Content).where(Content.creator_id == user.id)
+    )
+    content_count = int(content_count_row.scalar() or 0)
+
+    withdrawable_balance: int | None = None
+    if _live_withdraw_enabled() and getattr(user, "wallet_address", None):
+        try:
+            withdrawable_balance = await _get_escrow_creator_balance_minor(user.wallet_address)
+        except Exception:
+            pass
+
     result = await session.execute(
         select(Settlement)
         .join(PaymentChannel, PaymentChannel.id == Settlement.channel_id)

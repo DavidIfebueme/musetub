@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,8 @@ from app.features.ai_agents.services.quality import (
 )
 from app.platform.services.inference import is_configured, text_completion, vision_analysis
 from app.platform.services.video_analysis import extract_keyframes, extract_metadata, frames_to_base64
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -51,14 +54,19 @@ async def analyze_upload(
     try:
         try:
             metadata = await extract_metadata(tmp_path)
-        except Exception:
+            logger.info("ffprobe extracted metadata: duration=%.1fs resolution=%s bitrate_tier=%s codec=%s",
+                        metadata.duration_seconds, metadata.resolution, metadata.bitrate_tier, metadata.codec)
+        except Exception as exc:
+            logger.warning("ffprobe metadata extraction failed: %s", exc)
             pass
 
         if metadata and metadata.has_video:
             try:
                 frames = await extract_keyframes(tmp_path, count=4)
                 keyframes_b64 = frames_to_base64(frames)
-            except Exception:
+                logger.info("Extracted %d keyframes from video", len(keyframes_b64))
+            except Exception as exc:
+                logger.warning("Keyframe extraction failed: %s", exc)
                 pass
     finally:
         Path(tmp_path).unlink(missing_ok=True)
@@ -95,18 +103,23 @@ async def analyze_upload(
                 "engagement_intent": engagement_intent,
             })
             if keyframes_b64:
+                logger.info("Running vision analysis with %d keyframes via Gradient", len(keyframes_b64))
                 response = await vision_analysis(
                     system_prompt=VISUAL_ANALYSIS_PROMPT,
                     user_prompt=context,
                     image_b64_list=keyframes_b64,
                 )
             else:
+                logger.info("Running text-only quality analysis via Gradient (no keyframes)")
                 response = await text_completion(
                     system_prompt=VISUAL_ANALYSIS_PROMPT,
                     user_prompt=context,
                 )
             visual_score, content_score, summary = parse_llm_scores(response.text)
-        except Exception:
+            logger.info("Quality analysis complete: visual=%.1f content=%.1f summary=%s",
+                        visual_score, content_score, summary[:80])
+        except Exception as exc:
+            logger.warning("Quality analysis failed: %s", exc)
             pass
 
     moderation_safe = True
@@ -114,6 +127,7 @@ async def analyze_upload(
 
     if is_configured():
         try:
+            logger.info("Running content moderation%s", " with vision" if keyframes_b64 else " (text only)")
             mod_result = await moderate_content(
                 filename=filename,
                 content_type=content_type,
@@ -123,7 +137,9 @@ async def analyze_upload(
             )
             moderation_safe = mod_result.safe
             moderation_reason = mod_result.reason
-        except Exception:
+            logger.info("Moderation result: safe=%s reason=%s", moderation_safe, moderation_reason or "none")
+        except Exception as exc:
+            logger.warning("Moderation failed: %s", exc)
             pass
 
     if not metadata and not is_configured():
@@ -142,6 +158,9 @@ async def analyze_upload(
         )
 
     suggested_price = compute_suggested_price_per_second_minor_units(quality_score=quality_score)
+
+    logger.info("Analysis complete: quality_score=%d suggested_price=%d duration=%ds resolution=%s moderation_safe=%s",
+                quality_score, suggested_price, duration, resolution, moderation_safe)
 
     return ContentAnalysisResult(
         duration_seconds=duration,
