@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from app.platform.services.inference import is_configured, vision_analysis
+from app.platform.services.inference import is_configured, text_completion
 
 
 MODERATION_PROMPT = (
-    "Analyze these video keyframes for content policy compliance. "
-    "Check for: explicit/sexual content, graphic violence, hate symbols, "
-    "dangerous activities, visible watermarks from other platforms indicating reposted content. "
+    "You are a content moderation agent for a video streaming platform. "
+    "Given metadata about a video upload, assess whether it is likely to comply with content policy. "
+    "Flag potential issues based on the title, content type, and any available context. "
     "Return ONLY valid JSON with no extra text: "
     '{"safe": true, "flags": [], "confidence": 0.0, "reason": ""} '
     "where safe is boolean, flags is a list of policy violation categories, "
@@ -25,17 +25,27 @@ class ModerationResult:
     reason: str
 
 
-async def moderate_content(image_b64_list: list[str]) -> ModerationResult:
-    if not image_b64_list:
-        return ModerationResult(safe=True, flags=[], confidence=0.0, reason="No frames to analyze")
-
+async def moderate_content(
+    *,
+    filename: str,
+    content_type: str,
+    duration_seconds: int,
+    resolution: str,
+) -> ModerationResult:
     if not is_configured():
         return ModerationResult(safe=True, flags=[], confidence=0.0, reason="Moderation not configured")
 
+    context = json.dumps({
+        "filename": filename,
+        "content_type": content_type,
+        "duration_seconds": duration_seconds,
+        "resolution": resolution,
+    })
+
     try:
-        response = await vision_analysis(
-            prompt=MODERATION_PROMPT,
-            image_b64_list=image_b64_list,
+        response = await text_completion(
+            system_prompt=MODERATION_PROMPT,
+            user_prompt=context,
             temperature=0.1,
             max_tokens=512,
         )

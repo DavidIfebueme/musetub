@@ -34,17 +34,15 @@ def _mock_metadata(
 @pytest.mark.asyncio
 async def test_analyze_upload_with_ffprobe_and_inference():
     metadata = _mock_metadata()
-    keyframes = [b"\xff\xd8\xff" * 100]
 
-    mock_vision_response = AsyncMock()
-    mock_vision_response.text = '{"visual_score": 8.0, "content_score": 7.0, "summary": "High quality content"}'
+    mock_text_response = AsyncMock()
+    mock_text_response.text = '{"visual_score": 8.0, "content_score": 7.0, "summary": "High quality content"}'
 
     mock_mod_result = ModerationResult(safe=True, flags=[], confidence=0.9, reason="")
 
     with patch("app.features.ai_agents.services.content_analysis.extract_metadata", return_value=metadata), \
-         patch("app.features.ai_agents.services.content_analysis.extract_keyframes", return_value=keyframes), \
          patch("app.features.ai_agents.services.content_analysis.is_configured", return_value=True), \
-         patch("app.features.ai_agents.services.content_analysis.vision_analysis", return_value=mock_vision_response), \
+         patch("app.features.ai_agents.services.content_analysis.text_completion", return_value=mock_text_response), \
          patch("app.features.ai_agents.services.content_analysis.moderate_content", return_value=mock_mod_result):
 
         result = await analyze_upload(
@@ -69,7 +67,6 @@ async def test_analyze_upload_ffprobe_only_no_inference():
     metadata = _mock_metadata(height=2160, width=3840, bitrate=15_000_000, codec="hevc", framerate=60.0)
 
     with patch("app.features.ai_agents.services.content_analysis.extract_metadata", return_value=metadata), \
-         patch("app.features.ai_agents.services.content_analysis.extract_keyframes", return_value=[b"frame"]), \
          patch("app.features.ai_agents.services.content_analysis.is_configured", return_value=False):
 
         result = await analyze_upload(
@@ -129,19 +126,17 @@ async def test_analyze_upload_fallback_defaults_when_no_form_data():
 @pytest.mark.asyncio
 async def test_analyze_upload_moderation_flags_content():
     metadata = _mock_metadata()
-    keyframes = [b"\xff\xd8\xff"]
 
-    mock_vision_response = AsyncMock()
-    mock_vision_response.text = '{"visual_score": 5.0, "content_score": 5.0, "summary": "Normal"}'
+    mock_text_response = AsyncMock()
+    mock_text_response.text = '{"visual_score": 5.0, "content_score": 5.0, "summary": "Normal"}'
 
     mock_mod_result = ModerationResult(
         safe=False, flags=["violence"], confidence=0.92, reason="Graphic content detected"
     )
 
     with patch("app.features.ai_agents.services.content_analysis.extract_metadata", return_value=metadata), \
-         patch("app.features.ai_agents.services.content_analysis.extract_keyframes", return_value=keyframes), \
          patch("app.features.ai_agents.services.content_analysis.is_configured", return_value=True), \
-         patch("app.features.ai_agents.services.content_analysis.vision_analysis", return_value=mock_vision_response), \
+         patch("app.features.ai_agents.services.content_analysis.text_completion", return_value=mock_text_response), \
          patch("app.features.ai_agents.services.content_analysis.moderate_content", return_value=mock_mod_result):
 
         result = await analyze_upload(
@@ -156,16 +151,14 @@ async def test_analyze_upload_moderation_flags_content():
 
 
 @pytest.mark.asyncio
-async def test_analyze_upload_vision_analysis_exception_graceful():
+async def test_analyze_upload_text_analysis_exception_graceful():
     metadata = _mock_metadata()
-    keyframes = [b"\xff\xd8\xff"]
 
     mock_mod_result = ModerationResult(safe=True, flags=[], confidence=0.0, reason="")
 
     with patch("app.features.ai_agents.services.content_analysis.extract_metadata", return_value=metadata), \
-         patch("app.features.ai_agents.services.content_analysis.extract_keyframes", return_value=keyframes), \
          patch("app.features.ai_agents.services.content_analysis.is_configured", return_value=True), \
-         patch("app.features.ai_agents.services.content_analysis.vision_analysis", side_effect=Exception("API down")), \
+         patch("app.features.ai_agents.services.content_analysis.text_completion", side_effect=Exception("API down")), \
          patch("app.features.ai_agents.services.content_analysis.moderate_content", return_value=mock_mod_result):
 
         result = await analyze_upload(
@@ -187,9 +180,12 @@ async def test_analyze_upload_audio_only():
         has_video=False, has_audio=True,
     )
 
+    mock_mod_result = ModerationResult(safe=True, flags=[], confidence=0.0, reason="")
+
     with patch("app.features.ai_agents.services.content_analysis.extract_metadata", return_value=audio_metadata), \
-         patch("app.features.ai_agents.services.content_analysis.extract_keyframes", return_value=[]), \
-         patch("app.features.ai_agents.services.content_analysis.is_configured", return_value=True):
+         patch("app.features.ai_agents.services.content_analysis.is_configured", return_value=True), \
+         patch("app.features.ai_agents.services.content_analysis.text_completion", side_effect=Exception("skip")), \
+         patch("app.features.ai_agents.services.content_analysis.moderate_content", return_value=mock_mod_result):
 
         result = await analyze_upload(
             file_bytes=b"audio data",

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
-import httpx
+from gradient import AsyncGradient
 
 from app.platform.config import settings
+
+logger = logging.getLogger(__name__)
+
+_client: AsyncGradient | None = None
 
 
 @dataclass(frozen=True)
@@ -13,6 +18,16 @@ class InferenceResponse:
     model: str
     prompt_tokens: int
     completion_tokens: int
+
+
+def _get_client() -> AsyncGradient:
+    global _client
+    if _client is None:
+        _client = AsyncGradient(
+            model_access_key=settings.inference_api_key,
+            timeout=settings.inference_timeout_seconds,
+        )
+    return _client
 
 
 def is_configured() -> bool:
@@ -27,68 +42,33 @@ async def chat_completion(
     max_tokens: int = 1024,
 ) -> InferenceResponse:
     resolved_model = model or settings.inference_model
-    base_url = settings.inference_base_url.rstrip("/")
+    client = _get_client()
 
-    headers = {
-        "Authorization": f"Bearer {settings.inference_api_key}",
-        "Content-Type": "application/json",
-    }
+    response = await client.chat.completions.create(
+        messages=messages,
+        model=resolved_model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=False,
+    )
 
-    body = {
-        "model": resolved_model,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }
-
-    timeout = httpx.Timeout(settings.inference_timeout_seconds)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(
-            f"{base_url}/chat/completions",
-            headers=headers,
-            json=body,
-        )
-        resp.raise_for_status()
-
-    data = resp.json()
-    choices = data.get("choices", [])
     text = ""
-    if choices:
-        message = choices[0].get("message", {})
-        text = message.get("content", "") or ""
+    if response.choices:
+        msg = response.choices[0].message
+        if msg and msg.content:
+            text = msg.content
 
-    usage = data.get("usage", {})
+    prompt_tokens = 0
+    completion_tokens = 0
+    if response.usage:
+        prompt_tokens = response.usage.prompt_tokens or 0
+        completion_tokens = response.usage.completion_tokens or 0
 
     return InferenceResponse(
         text=text.strip(),
-        model=data.get("model", resolved_model),
-        prompt_tokens=usage.get("prompt_tokens", 0),
-        completion_tokens=usage.get("completion_tokens", 0),
-    )
-
-
-async def vision_analysis(
-    *,
-    prompt: str,
-    image_b64_list: list[str],
-    model: str | None = None,
-    temperature: float = 0.2,
-    max_tokens: int = 1024,
-) -> InferenceResponse:
-    content: list[dict] = [{"type": "text", "text": prompt}]
-    for img_b64 in image_b64_list:
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
-        })
-
-    messages = [{"role": "user", "content": content}]
-
-    return await chat_completion(
-        messages=messages,
-        model=model or settings.inference_vision_model,
-        temperature=temperature,
-        max_tokens=max_tokens,
+        model=response.model,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
     )
 
 

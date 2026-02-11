@@ -17,10 +17,10 @@ class QualityResult:
     summary: str
 
 
-VISUAL_ANALYSIS_PROMPT = (
-    "Analyze these video keyframes for visual and content quality. "
-    "Consider: image clarity, sharpness, lighting, color grading, composition, production value. "
-    "For content, consider educational/entertainment value and originality. "
+QUALITY_ANALYSIS_PROMPT = (
+    "You are a video quality analysis agent. Given the technical metadata of a video upload, "
+    "estimate visual quality and content value. Consider resolution, bitrate, codec, framerate, "
+    "and duration as indicators of production quality. "
     "Return ONLY valid JSON with no extra text: "
     '{"visual_score": 0.0, "content_score": 0.0, "summary": "1-2 sentence analysis"} '
     "where scores range from 0.0 to 10.0."

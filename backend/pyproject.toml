@@ -8,6 +8,7 @@ dependencies = [
 	"psycopg2-binary>=2.9",
 	"circle-developer-controlled-wallets>=9.0.0",
 	"fastapi>=0.110",
+	"gradient>=3.10",
 	"python-multipart>=0.0.9",
 	"email-validator>=2.1",
 	"python-jose[cryptography]>=3.3",

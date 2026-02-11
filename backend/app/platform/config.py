@@ -25,10 +25,8 @@ class Settings(BaseSettings):
     pinata_jwt: str | None = None
 
     inference_api_key: str | None = None
-    inference_base_url: str = "https://cluster-api.do-ai.run/v1"
-    inference_model: str = "meta-llama/Meta-Llama-3.1-70B-Instruct"
-    inference_vision_model: str = "meta-llama/Llama-3.2-90B-Vision-Instruct"
-    inference_timeout_seconds: float = 30.0
+    inference_model: str = "llama3.3-70b-instruct"
+    inference_timeout_seconds: float = 60.0
 
     jwt_secret: str = "dev-unsafe-change-me"
     jwt_algorithm: str = "HS256"
