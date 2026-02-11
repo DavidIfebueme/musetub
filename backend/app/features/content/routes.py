@@ -10,6 +10,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.ai_agents.services.content_analysis import analyze_upload
 from app.features.ai_agents.services.pricing import compute_suggested_price_per_second_minor_units
 from app.features.ai_agents.services.quality import compute_quality_score
 from app.features.content.schemas import ContentListItem, ContentResponse, StreamResponse
@@ -252,10 +253,10 @@ async def upload_content(
     title: str = Form(...),
     description: str = Form(...),
     content_type: str = Form(...),
-    duration_seconds: int = Form(...),
-    resolution: str = Form(...),
-    bitrate_tier: str = Form(...),
     engagement_intent: str = Form(...),
+    duration_seconds: int | None = Form(None),
+    resolution: str | None = Form(None),
+    bitrate_tier: str | None = Form(None),
     user=Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     ipfs: IPFSClient = Depends(get_ipfs_client),
@@ -267,32 +268,40 @@ async def upload_content(
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    cid = await ipfs.add_bytes(file_bytes, filename=file.filename or "upload")
-
-    quality_score = compute_quality_score(
-        duration_seconds=duration_seconds,
-        resolution=resolution,
-        bitrate_tier=bitrate_tier,
+    analysis = await analyze_upload(
+        file_bytes=file_bytes,
+        filename=file.filename or "upload",
         content_type=content_type,
         engagement_intent=engagement_intent,
+        form_duration=duration_seconds,
+        form_resolution=resolution,
+        form_bitrate_tier=bitrate_tier,
     )
-    suggested = compute_suggested_price_per_second_minor_units(quality_score=quality_score)
+
+    if not analysis.moderation_safe:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Content flagged by moderation: {analysis.moderation_reason}",
+        )
+
+    cid = await ipfs.add_bytes(file_bytes, filename=file.filename or "upload")
 
     metadata = {
         "title": title,
         "description": description,
         "content_type": content_type,
-        "duration_seconds": duration_seconds,
-        "resolution": resolution,
-        "bitrate_tier": bitrate_tier,
+        "duration_seconds": analysis.duration_seconds,
+        "resolution": analysis.resolution,
+        "bitrate_tier": analysis.bitrate_tier,
         "engagement_intent": engagement_intent,
+        "analysis_summary": analysis.analysis_summary,
     }
 
     explanation = await get_or_create_pricing_explanation(
         session=session,
         metadata=metadata,
-        suggested_price_per_second=suggested,
-        quality_score=quality_score,
+        suggested_price_per_second=analysis.suggested_price,
+        quality_score=analysis.quality_score,
     )
 
     row = Content(
@@ -300,13 +309,13 @@ async def upload_content(
         title=title,
         description=description,
         content_type=content_type,
-        duration_seconds=duration_seconds,
-        resolution=resolution,
-        bitrate_tier=bitrate_tier,
+        duration_seconds=analysis.duration_seconds,
+        resolution=analysis.resolution,
+        bitrate_tier=analysis.bitrate_tier,
         engagement_intent=engagement_intent,
-        quality_score=quality_score,
-        suggested_price_per_second=suggested,
-        price_per_second=suggested,
+        quality_score=analysis.quality_score,
+        suggested_price_per_second=analysis.suggested_price,
+        price_per_second=analysis.suggested_price,
         ipfs_cid=cid,
     )
 

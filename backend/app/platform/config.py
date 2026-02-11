@@ -24,10 +24,11 @@ class Settings(BaseSettings):
     pinata_api_url: str = "https://api.pinata.cloud"
     pinata_jwt: str | None = None
 
-    gemini_api_key: str | None = None
-    gemini_model: str = "gemini-1.5-flash"
-    gemini_timeout_seconds: float = 10.0
-    gemini_max_prompt_chars: int = 2500
+    inference_api_key: str | None = None
+    inference_base_url: str = "https://cluster-api.do-ai.run/v1"
+    inference_model: str = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    inference_vision_model: str = "meta-llama/Llama-3.2-90B-Vision-Instruct"
+    inference_timeout_seconds: float = 30.0
 
     jwt_secret: str = "dev-unsafe-change-me"
     jwt_algorithm: str = "HS256"

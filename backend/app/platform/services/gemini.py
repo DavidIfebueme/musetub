@@ -1,13 +1,12 @@
 import hashlib
 import json
 
-import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.platform.config import settings
 from app.platform.db.models import AICache
 from app.platform.redis import get_redis
+from app.platform.services.inference import is_configured, text_completion
 
 
 def pricing_explanation_cache_key(metadata: dict, suggested_price_per_second: int, quality_score: int) -> str:
@@ -47,19 +46,23 @@ def negotiation_summary_cache_key(
     return f"negotiation_summary:{digest}"
 
 
-def _truncate_text(text: str, max_chars: int) -> str:
-    if max_chars <= 0:
-        return ""
-    if len(text) <= max_chars:
-        return text
-    if max_chars <= 1:
-        return text[:max_chars]
-    return text[: max_chars - 1] + "…"
+async def _cache_get(cache_key: str) -> str | None:
+    try:
+        redis = get_redis()
+        cached = await redis.get(cache_key)
+        if isinstance(cached, str) and cached:
+            return cached
+    except Exception:
+        pass
+    return None
 
 
-def _json_for_prompt(data: dict) -> str:
-    raw = json.dumps(data, separators=(",", ":"), sort_keys=True)
-    return _truncate_text(raw, settings.gemini_max_prompt_chars)
+async def _cache_set(cache_key: str, value: str) -> None:
+    try:
+        redis = get_redis()
+        await redis.set(cache_key, value, ex=60 * 60 * 24 * 30)
+    except Exception:
+        pass
 
 
 async def get_or_create_pricing_explanation(
@@ -71,23 +74,14 @@ async def get_or_create_pricing_explanation(
 ) -> str:
     cache_key = pricing_explanation_cache_key(metadata, suggested_price_per_second, quality_score)
 
-    redis = None
-    try:
-        redis = get_redis()
-        cached = await redis.get(cache_key)
-        if isinstance(cached, str) and cached:
-            return cached
-    except Exception:
-        redis = None
+    cached = await _cache_get(cache_key)
+    if cached:
+        return cached
 
     existing = await session.execute(select(AICache).where(AICache.cache_key == cache_key))
     row = existing.scalar_one_or_none()
     if row is not None:
-        if redis is not None:
-            try:
-                await redis.set(cache_key, row.value_text, ex=60 * 60 * 24 * 30)
-            except Exception:
-                pass
+        await _cache_set(cache_key, row.value_text)
         return row.value_text
 
     text = await _generate_pricing_explanation(
@@ -99,11 +93,7 @@ async def get_or_create_pricing_explanation(
     session.add(AICache(cache_key=cache_key, value_text=text))
     await session.commit()
 
-    if redis is not None:
-        try:
-            await redis.set(cache_key, text, ex=60 * 60 * 24 * 30)
-        except Exception:
-            pass
+    await _cache_set(cache_key, text)
 
     return text
 
@@ -125,23 +115,14 @@ async def get_or_create_negotiation_summary(
         counter_price_per_second=counter_price_per_second,
     )
 
-    redis = None
-    try:
-        redis = get_redis()
-        cached = await redis.get(cache_key)
-        if isinstance(cached, str) and cached:
-            return cached
-    except Exception:
-        redis = None
+    cached = await _cache_get(cache_key)
+    if cached:
+        return cached
 
     existing = await session.execute(select(AICache).where(AICache.cache_key == cache_key))
     row = existing.scalar_one_or_none()
     if row is not None:
-        if redis is not None:
-            try:
-                await redis.set(cache_key, row.value_text, ex=60 * 60 * 24 * 30)
-            except Exception:
-                pass
+        await _cache_set(cache_key, row.value_text)
         return row.value_text
 
     text = await _generate_negotiation_summary(
@@ -155,59 +136,31 @@ async def get_or_create_negotiation_summary(
     session.add(AICache(cache_key=cache_key, value_text=text))
     await session.commit()
 
-    if redis is not None:
-        try:
-            await redis.set(cache_key, text, ex=60 * 60 * 24 * 30)
-        except Exception:
-            pass
+    await _cache_set(cache_key, text)
 
     return text
 
 
 async def _generate_pricing_explanation(*, metadata: dict, suggested_price_per_second: int, quality_score: int) -> str:
-    if not settings.gemini_api_key:
+    if not is_configured():
         return _fallback_explanation(metadata, suggested_price_per_second, quality_score)
 
-    model = settings.gemini_model
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-
-    prompt = (
-        "Explain in 1-2 sentences why this content has the suggested price per second. "
-        "Be specific to the provided metadata."
+    context = json.dumps(
+        {"metadata": metadata, "quality_score": quality_score, "suggested_price_per_second": suggested_price_per_second},
+        separators=(",", ":"),
     )
 
-    body = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [
-                    {"text": prompt},
-                    {"text": _json_for_prompt(metadata)},
-                    {"text": f"quality_score={quality_score}"},
-                    {"text": f"suggested_price_per_second={suggested_price_per_second}"},
-                ],
-            }
-        ]
-    }
-
-    timeout = httpx.Timeout(settings.gemini_timeout_seconds)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(url, params={"key": settings.gemini_api_key}, json=body)
-
-    if resp.status_code >= 400:
-        return _fallback_explanation(metadata, suggested_price_per_second, quality_score)
-
     try:
-        payload = resp.json()
-        candidates = payload.get("candidates")
-        if isinstance(candidates, list) and candidates:
-            content = candidates[0].get("content")
-            if isinstance(content, dict):
-                parts = content.get("parts")
-                if isinstance(parts, list) and parts:
-                    text = parts[0].get("text")
-                    if isinstance(text, str) and text.strip():
-                        return text.strip()
+        response = await text_completion(
+            system_prompt=(
+                "You explain content pricing decisions on a video streaming platform. "
+                "Be specific to the provided metadata. Keep responses to 1-2 sentences."
+            ),
+            user_prompt=f"Explain why this content has the suggested price per second.\n{context}",
+            max_tokens=256,
+        )
+        if response.text:
+            return response.text
     except Exception:
         pass
 
@@ -222,7 +175,7 @@ async def _generate_negotiation_summary(
     accepted: bool,
     counter_price_per_second: int,
 ) -> str:
-    if not settings.gemini_api_key:
+    if not is_configured():
         return _fallback_negotiation_summary(
             proposed_price_per_second=proposed_price_per_second,
             duration_seconds=duration_seconds,
@@ -230,54 +183,27 @@ async def _generate_negotiation_summary(
             counter_price_per_second=counter_price_per_second,
         )
 
-    model = settings.gemini_model
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-
-    prompt = "Write a short 1-sentence negotiation summary message. Keep it neutral and concise."
-
-    context = {
-        "creator_id": creator_id,
-        "proposed_price_per_second": proposed_price_per_second,
-        "duration_seconds": duration_seconds,
-        "accepted": accepted,
-        "counter_price_per_second": counter_price_per_second,
-    }
-
-    body = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [
-                    {"text": prompt},
-                    {"text": _json_for_prompt(context)},
-                ],
-            }
-        ]
-    }
-
-    timeout = httpx.Timeout(settings.gemini_timeout_seconds)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(url, params={"key": settings.gemini_api_key}, json=body)
-
-    if resp.status_code >= 400:
-        return _fallback_negotiation_summary(
-            proposed_price_per_second=proposed_price_per_second,
-            duration_seconds=duration_seconds,
-            accepted=accepted,
-            counter_price_per_second=counter_price_per_second,
-        )
+    context = json.dumps(
+        {
+            "proposed_price_per_second": proposed_price_per_second,
+            "duration_seconds": duration_seconds,
+            "accepted": accepted,
+            "counter_price_per_second": counter_price_per_second,
+        },
+        separators=(",", ":"),
+    )
 
     try:
-        payload = resp.json()
-        candidates = payload.get("candidates")
-        if isinstance(candidates, list) and candidates:
-            content = candidates[0].get("content")
-            if isinstance(content, dict):
-                parts = content.get("parts")
-                if isinstance(parts, list) and parts:
-                    text = parts[0].get("text")
-                    if isinstance(text, str) and text.strip():
-                        return _truncate_text(text.strip(), 200)
+        response = await text_completion(
+            system_prompt=(
+                "You write concise negotiation summaries for a video streaming platform. "
+                "Keep responses to 1 sentence, neutral tone."
+            ),
+            user_prompt=f"Write a negotiation summary.\n{context}",
+            max_tokens=128,
+        )
+        if response.text:
+            return response.text[:200]
     except Exception:
         pass
 

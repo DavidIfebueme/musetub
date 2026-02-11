@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.db.models import CreatorPolicy
+from app.platform.services.inference import is_configured, text_completion
 
 
 @dataclass(frozen=True)
@@ -15,6 +17,17 @@ class NegotiationDecision:
     discount_bps: int
     effective_min_price_per_second: int
     effective_max_price_per_second: int
+    reasoning: str
+
+
+NEGOTIATION_SYSTEM_PROMPT = (
+    "You are a pricing negotiation agent for a video streaming platform. "
+    "Given a negotiation context, suggest a fair counter-offer within the allowed price range "
+    "and provide brief reasoning. "
+    "Return ONLY valid JSON: "
+    '{"counter": 0, "reasoning": "1-2 sentence explanation"} '
+    "where counter is an integer within the effective min/max bounds."
+)
 
 
 def _clamp_int(value: int, minimum: int, maximum: int) -> int:
@@ -82,6 +95,7 @@ def evaluate_price_proposal(
         discount_bps=discount_bps,
         effective_min_price_per_second=effective_min,
         effective_max_price_per_second=effective_max,
+        reasoning="",
     )
 
 
@@ -118,3 +132,60 @@ def evaluate_price_proposal_with_policy(
         proposed_price_per_second=proposed_price_per_second,
         duration_seconds=duration_seconds,
     )
+
+
+async def negotiate_with_reasoning(
+    *,
+    decision: NegotiationDecision,
+    content_quality_score: int,
+    content_type: str,
+    proposed_price_per_second: int,
+    duration_seconds: int,
+) -> NegotiationDecision:
+    if not is_configured():
+        return decision
+
+    context = json.dumps({
+        "proposed_price": proposed_price_per_second,
+        "effective_min": decision.effective_min_price_per_second,
+        "effective_max": decision.effective_max_price_per_second,
+        "content_quality_score": content_quality_score,
+        "content_type": content_type,
+        "duration_seconds": duration_seconds,
+        "discount_applied_bps": decision.discount_bps,
+        "currently_accepted": decision.accepted,
+    })
+
+    try:
+        response = await text_completion(
+            system_prompt=NEGOTIATION_SYSTEM_PROMPT,
+            user_prompt=context,
+            temperature=0.2,
+            max_tokens=256,
+        )
+        data = json.loads(response.text)
+        llm_counter = int(data.get("counter", decision.counter_price_per_second))
+        reasoning = str(data.get("reasoning", ""))
+
+        safe_counter = _clamp_int(
+            llm_counter,
+            decision.effective_min_price_per_second,
+            decision.effective_max_price_per_second,
+        )
+
+        accepted = (
+            decision.effective_min_price_per_second
+            <= proposed_price_per_second
+            <= decision.effective_max_price_per_second
+        )
+
+        return NegotiationDecision(
+            accepted=accepted,
+            counter_price_per_second=safe_counter,
+            discount_bps=decision.discount_bps,
+            effective_min_price_per_second=decision.effective_min_price_per_second,
+            effective_max_price_per_second=decision.effective_max_price_per_second,
+            reasoning=reasoning,
+        )
+    except Exception:
+        return decision
