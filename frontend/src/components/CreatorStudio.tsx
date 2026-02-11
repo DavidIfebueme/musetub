@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, Upload, Wallet } from 'lucide-react';
+import { ArrowUpRight, CheckCircle, Upload, Wallet } from 'lucide-react';
 
 import { CreatorDashboardResponse } from '../types';
 import { getCreatorDashboard, withdrawCreator } from '../services/creators';
@@ -27,6 +27,8 @@ export default function CreatorStudio({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('entertainment');
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const totals = useMemo(() => {
     return {
@@ -51,23 +53,34 @@ export default function CreatorStudio({
 
     setBusy(true);
     setError(null);
+    setUploadProgress(0);
+    setUploadSuccess(false);
     try {
-      await uploadContent(token, {
-        file,
-        title,
-        description,
-        content_type: 'video',
-        engagement_intent: category,
-      });
+      await uploadContent(
+        token,
+        {
+          file,
+          title,
+          description,
+          content_type: 'video',
+          engagement_intent: category,
+        },
+        (pct) => setUploadProgress(pct),
+      );
+      setUploadProgress(100);
       setFile(null);
       setTitle('');
       setDescription('');
+      setShowUpload(false);
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 4000);
       await refresh();
       onUploaded();
     } catch (e) {
       setError(String(e));
     } finally {
       setBusy(false);
+      setUploadProgress(null);
     }
   }
 
@@ -318,24 +331,44 @@ export default function CreatorStudio({
 
               <input
                 type="file"
+                accept="video/*"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 text-zinc-400"
               />
 
+              {uploadProgress != null ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">
+                    <span>{uploadProgress < 100 ? 'Uploading…' : 'Processing…'}</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
               <button
-                onClick={async () => {
-                  await submitUpload();
-                  setShowUpload(false);
-                }}
+                onClick={() => void submitUpload()}
                 disabled={busy || !file || !title || !description}
                 className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-zinc-100 transition-all disabled:opacity-50"
               >
-                {busy ? '...' : 'Upload'}
+                {busy ? 'Uploading…' : 'Upload'}
               </button>
 
               {error ? <div className="text-zinc-300 text-sm font-bold break-all">{error}</div> : null}
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {uploadSuccess ? (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass rounded-2xl px-6 py-4 border-white/10 flex items-center gap-3 animate-[fadeIn_0.3s_ease-out]">
+          <CheckCircle className="text-emerald-400" size={20} />
+          <span className="font-black text-white">Video uploaded successfully!</span>
         </div>
       ) : null}
     </div>
