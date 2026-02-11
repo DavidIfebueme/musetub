@@ -146,6 +146,11 @@ export default function CreatorStudio({
         <div className="glass rounded-3xl p-8 border-white/10">
           <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Creator share</div>
           <div className="mono text-3xl font-black text-white">{formatUsdcMinor(totals.creator)} USDC</div>
+          <div className="text-[10px] text-zinc-500 mt-2 font-bold">
+            {dashboard?.platform_fee_bps != null
+              ? `${(dashboard.platform_fee_bps / 100).toFixed(0)}% platform fee`
+              : ''}
+          </div>
         </div>
         <button
           onClick={doWithdraw}
@@ -161,7 +166,16 @@ export default function CreatorStudio({
               <Wallet className="text-black" size={22} />
             </div>
           </div>
-          <div className="mt-4 text-zinc-500 text-sm font-semibold">Withdraw your available balance.</div>
+          <div className="mt-4">
+            {dashboard?.withdrawable_balance != null ? (
+              <div className="mono text-lg font-black text-emerald-400">
+                {formatUsdcMinor(dashboard.withdrawable_balance)} USDC
+                <span className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em] ml-2">available</span>
+              </div>
+            ) : (
+              <div className="text-zinc-500 text-sm font-semibold">Withdraw your available balance.</div>
+            )}
+          </div>
 
           {withdrawTxId ? (
             <div className="mt-4 glass rounded-2xl p-4 border-white/10">
@@ -183,7 +197,12 @@ export default function CreatorStudio({
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">Content</div>
+        <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.35em]">
+          Content
+          {dashboard?.content_count != null ? (
+            <span className="ml-2 text-zinc-300">({dashboard.content_count})</span>
+          ) : null}
+        </div>
         <button
           onClick={() => setShowUpload(true)}
           className="px-5 py-3 rounded-2xl bg-white text-black font-black uppercase tracking-[0.35em] text-xs"

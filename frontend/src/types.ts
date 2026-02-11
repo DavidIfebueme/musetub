@@ -49,6 +49,9 @@ export type CreatorSettlementItem = {
 export type CreatorDashboardResponse = {
   total_amount_gross: number;
   total_amount_creator: number;
+  withdrawable_balance: number | null;
+  content_count: number;
+  platform_fee_bps: number;
   earnings_by_content: CreatorContentEarningsItem[];
   recent_settlements: CreatorSettlementItem[];
 };

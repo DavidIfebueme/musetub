@@ -171,6 +171,9 @@ async def creator_dashboard(
     return CreatorDashboardResponse(
         total_amount_gross=total_gross,
         total_amount_creator=total_creator,
+        withdrawable_balance=withdrawable_balance,
+        content_count=content_count,
+        platform_fee_bps=_BPS_DENOMINATOR - _CREATOR_SHARE_BPS,
         earnings_by_content=earnings_by_content,
         recent_settlements=recent_items,
     )

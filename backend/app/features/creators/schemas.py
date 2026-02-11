@@ -25,6 +25,9 @@ class CreatorContentEarningsItem(BaseModel):
 class CreatorDashboardResponse(BaseModel):
     total_amount_gross: int
     total_amount_creator: int
+    withdrawable_balance: int | None
+    content_count: int
+    platform_fee_bps: int
     earnings_by_content: list[CreatorContentEarningsItem]
     recent_settlements: list[CreatorSettlementItem]
 
