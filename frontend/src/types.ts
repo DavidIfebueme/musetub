@@ -7,6 +7,7 @@ export type ContentItem = {
   price_per_second: number;
   quality_score: number;
   playback_url: string;
+  thumbnail_url: string | null;
   created_at: string;
 };
 
@@ -25,6 +26,7 @@ export type ContentResponse = {
   price_per_second: number;
   ipfs_cid: string;
   playback_url: string;
+  thumbnail_url: string | null;
   pricing_explanation: string;
   created_at: string;
 };

@@ -53,6 +53,7 @@ class Content(Base):
     suggested_price_per_second: Mapped[int] = mapped_column(BigInteger)
     price_per_second: Mapped[int] = mapped_column(BigInteger)
     ipfs_cid: Mapped[str] = mapped_column(String(128))
+    thumbnail_cid: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

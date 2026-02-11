@@ -286,6 +286,12 @@ async def upload_content(
 
     cid = await ipfs.add_bytes(file_bytes, filename=file.filename or "upload")
 
+    thumbnail_cid: str | None = None
+    if analysis.thumbnail_frame:
+        thumbnail_cid = await ipfs.add_bytes(
+            analysis.thumbnail_frame, filename="thumbnail.jpg"
+        )
+
     metadata = {
         "title": title,
         "description": description,
@@ -317,6 +323,7 @@ async def upload_content(
         suggested_price_per_second=analysis.suggested_price,
         price_per_second=analysis.suggested_price,
         ipfs_cid=cid,
+        thumbnail_cid=thumbnail_cid,
     )
 
     session.add(row)
@@ -338,6 +345,7 @@ async def upload_content(
         price_per_second=row.price_per_second,
         ipfs_cid=row.ipfs_cid,
         playback_url=ipfs.playback_url(row.ipfs_cid),
+        thumbnail_url=ipfs.playback_url(row.thumbnail_cid) if row.thumbnail_cid else None,
         pricing_explanation=explanation,
         created_at=row.created_at,
     )
@@ -361,6 +369,7 @@ async def list_content(
             price_per_second=row.price_per_second,
             quality_score=row.quality_score,
             playback_url=ipfs.playback_url(row.ipfs_cid),
+            thumbnail_url=ipfs.playback_url(row.thumbnail_cid) if row.thumbnail_cid else None,
             created_at=row.created_at,
         )
         for row in rows
@@ -410,6 +419,7 @@ async def get_content(
         price_per_second=row.price_per_second,
         ipfs_cid=row.ipfs_cid,
         playback_url=ipfs.playback_url(row.ipfs_cid),
+        thumbnail_url=ipfs.playback_url(row.thumbnail_cid) if row.thumbnail_cid else None,
         pricing_explanation=explanation,
         created_at=row.created_at,
     )

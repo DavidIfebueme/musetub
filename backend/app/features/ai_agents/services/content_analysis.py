@@ -31,6 +31,7 @@ class ContentAnalysisResult:
     moderation_safe: bool
     moderation_reason: str
     analysis_summary: str
+    thumbnail_frame: bytes | None
 
 
 async def analyze_upload(
@@ -45,6 +46,7 @@ async def analyze_upload(
 ) -> ContentAnalysisResult:
     metadata = None
     keyframes_b64: list[str] = []
+    thumbnail_frame: bytes | None = None
 
     suffix = Path(filename).suffix or ".mp4"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -63,6 +65,8 @@ async def analyze_upload(
         if metadata and metadata.has_video:
             try:
                 frames = await extract_keyframes(tmp_path, count=4)
+                if frames:
+                    thumbnail_frame = frames[0]
                 keyframes_b64 = frames_to_base64(frames)
                 logger.info("Extracted %d keyframes from video", len(keyframes_b64))
             except Exception as exc:
@@ -171,4 +175,5 @@ async def analyze_upload(
         moderation_safe=moderation_safe,
         moderation_reason=moderation_reason,
         analysis_summary=summary,
+        thumbnail_frame=thumbnail_frame,
     )

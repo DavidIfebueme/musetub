@@ -18,6 +18,7 @@ class ContentResponse(BaseModel):
     price_per_second: int
     ipfs_cid: str
     playback_url: str
+    thumbnail_url: str | None
     pricing_explanation: str
     created_at: datetime
 
@@ -31,6 +32,7 @@ class ContentListItem(BaseModel):
     price_per_second: int
     quality_score: int
     playback_url: str
+    thumbnail_url: str | None
     created_at: datetime
 
 

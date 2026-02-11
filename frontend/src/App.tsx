@@ -274,7 +274,7 @@ export default function App() {
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img
-                      src={`https://picsum.photos/seed/${item.id}/800/450`}
+                      src={item.thumbnail_url ?? `https://picsum.photos/seed/${item.id}/800/450`}
                       alt={item.title}
                       className="w-full h-full object-cover grayscale-[35%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
                     />

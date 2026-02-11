@@ -62,6 +62,7 @@ async def test_analyze_upload_with_ffprobe_and_inference():
     assert 1 <= result.quality_score <= 10
     assert result.suggested_price > 0
     assert result.analysis_summary == "High quality content"
+    assert result.thumbnail_frame == b"frame1"
 
 
 @pytest.mark.asyncio
@@ -84,6 +85,7 @@ async def test_analyze_upload_ffprobe_only_no_inference():
     assert result.bitrate_tier == "high"
     assert result.moderation_safe is True
     assert 1 <= result.quality_score <= 10
+    assert result.thumbnail_frame is None
 
 
 @pytest.mark.asyncio
