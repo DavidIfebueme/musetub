@@ -91,3 +91,34 @@ async def text_completion(
         temperature=temperature,
         max_tokens=max_tokens,
     )
+
+
+async def vision_analysis(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    image_b64_list: list[str],
+    model: str | None = None,
+    temperature: float = 0.3,
+    max_tokens: int = 1024,
+) -> InferenceResponse:
+    content_parts: list[dict] = [{"type": "text", "text": user_prompt}]
+    for b64 in image_b64_list:
+        content_parts.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+        })
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": content_parts},
+    ]
+
+    resolved_model = model or settings.inference_vision_model
+
+    return await chat_completion(
+        messages=messages,
+        model=resolved_model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )

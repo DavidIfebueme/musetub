@@ -8,14 +8,14 @@ from pathlib import Path
 from app.features.ai_agents.services.moderation import moderate_content
 from app.features.ai_agents.services.pricing import compute_suggested_price_per_second_minor_units
 from app.features.ai_agents.services.quality import (
-    QUALITY_ANALYSIS_PROMPT,
+    VISUAL_ANALYSIS_PROMPT,
     compute_composite_score,
     compute_quality_score,
     compute_technical_score,
     parse_llm_scores,
 )
-from app.platform.services.inference import is_configured, text_completion
-from app.platform.services.video_analysis import extract_metadata
+from app.platform.services.inference import is_configured, text_completion, vision_analysis
+from app.platform.services.video_analysis import extract_keyframes, extract_metadata, frames_to_base64
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ async def analyze_upload(
     form_bitrate_tier: str | None = None,
 ) -> ContentAnalysisResult:
     metadata = None
+    keyframes_b64: list[str] = []
 
     suffix = Path(filename).suffix or ".mp4"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -52,6 +53,13 @@ async def analyze_upload(
             metadata = await extract_metadata(tmp_path)
         except Exception:
             pass
+
+        if metadata and metadata.has_video:
+            try:
+                frames = await extract_keyframes(tmp_path, count=4)
+                keyframes_b64 = frames_to_base64(frames)
+            except Exception:
+                pass
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -86,10 +94,17 @@ async def analyze_upload(
                 "content_type": content_type,
                 "engagement_intent": engagement_intent,
             })
-            response = await text_completion(
-                system_prompt=QUALITY_ANALYSIS_PROMPT,
-                user_prompt=context,
-            )
+            if keyframes_b64:
+                response = await vision_analysis(
+                    system_prompt=VISUAL_ANALYSIS_PROMPT,
+                    user_prompt=context,
+                    image_b64_list=keyframes_b64,
+                )
+            else:
+                response = await text_completion(
+                    system_prompt=VISUAL_ANALYSIS_PROMPT,
+                    user_prompt=context,
+                )
             visual_score, content_score, summary = parse_llm_scores(response.text)
         except Exception:
             pass
@@ -104,6 +119,7 @@ async def analyze_upload(
                 content_type=content_type,
                 duration_seconds=duration,
                 resolution=resolution,
+                image_b64_list=keyframes_b64 or None,
             )
             moderation_safe = mod_result.safe
             moderation_reason = mod_result.reason

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     inference_api_key: str | None = None
     inference_model: str = "llama3.3-70b-instruct"
+    inference_vision_model: str = "anthropic-claude-sonnet-4.5"
     inference_timeout_seconds: float = 60.0
 
     jwt_secret: str = "dev-unsafe-change-me"

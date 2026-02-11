@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from app.platform.services.inference import is_configured, text_completion
+from app.platform.services.inference import is_configured, text_completion, vision_analysis
 
 
 MODERATION_PROMPT = (
     "You are a content moderation agent for a video streaming platform. "
-    "Given metadata about a video upload, assess whether it is likely to comply with content policy. "
-    "Flag potential issues based on the title, content type, and any available context. "
+    "Analyze the provided video keyframes and metadata to assess whether the content "
+    "complies with content policy. Look for violence, nudity, hate speech indicators, "
+    "dangerous activities, or any other policy violations visible in the frames. "
     "Return ONLY valid JSON with no extra text: "
     '{"safe": true, "flags": [], "confidence": 0.0, "reason": ""} '
     "where safe is boolean, flags is a list of policy violation categories, "
@@ -31,6 +32,7 @@ async def moderate_content(
     content_type: str,
     duration_seconds: int,
     resolution: str,
+    image_b64_list: list[str] | None = None,
 ) -> ModerationResult:
     if not is_configured():
         return ModerationResult(safe=True, flags=[], confidence=0.0, reason="Moderation not configured")
@@ -43,12 +45,21 @@ async def moderate_content(
     })
 
     try:
-        response = await text_completion(
-            system_prompt=MODERATION_PROMPT,
-            user_prompt=context,
-            temperature=0.1,
-            max_tokens=512,
-        )
+        if image_b64_list:
+            response = await vision_analysis(
+                system_prompt=MODERATION_PROMPT,
+                user_prompt=context,
+                image_b64_list=image_b64_list,
+                temperature=0.1,
+                max_tokens=512,
+            )
+        else:
+            response = await text_completion(
+                system_prompt=MODERATION_PROMPT,
+                user_prompt=context,
+                temperature=0.1,
+                max_tokens=512,
+            )
         data = json.loads(response.text)
         return ModerationResult(
             safe=bool(data.get("safe", True)),

@@ -7,6 +7,7 @@ from app.platform.services.inference import (
     chat_completion,
     is_configured,
     text_completion,
+    vision_analysis,
 )
 
 
@@ -169,3 +170,83 @@ async def test_chat_completion_passes_temperature_and_max_tokens():
     call_kwargs = mock_client.chat.completions.create.call_args[1]
     assert call_kwargs["temperature"] == 0.7
     assert call_kwargs["max_tokens"] == 2048
+
+
+@pytest.mark.asyncio
+async def test_vision_analysis_builds_multimodal_messages():
+    mock_resp = _mock_completion_response(
+        content='{"visual_score": 8.0, "content_score": 7.0, "summary": "Great"}',
+        model="anthropic-claude-sonnet-4.5",
+    )
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+    with patch("app.platform.services.inference.settings") as mock_settings, \
+         patch("app.platform.services.inference._get_client", return_value=mock_client):
+        mock_settings.inference_api_key = "key"
+        mock_settings.inference_model = "llama3.3-70b-instruct"
+        mock_settings.inference_vision_model = "anthropic-claude-sonnet-4.5"
+
+        result = await vision_analysis(
+            system_prompt="Analyze these frames.",
+            user_prompt="Video metadata here.",
+            image_b64_list=["base64data1", "base64data2"],
+        )
+
+    assert result.text == '{"visual_score": 8.0, "content_score": 7.0, "summary": "Great"}'
+    call_kwargs = mock_client.chat.completions.create.call_args[1]
+    assert call_kwargs["model"] == "anthropic-claude-sonnet-4.5"
+    messages = call_kwargs["messages"]
+    assert len(messages) == 2
+    assert messages[0]["role"] == "system"
+    user_content = messages[1]["content"]
+    assert isinstance(user_content, list)
+    assert user_content[0] == {"type": "text", "text": "Video metadata here."}
+    assert len(user_content) == 3
+    assert user_content[1]["type"] == "image_url"
+    assert user_content[2]["type"] == "image_url"
+
+
+@pytest.mark.asyncio
+async def test_vision_analysis_uses_default_vision_model():
+    mock_resp = _mock_completion_response(model="anthropic-claude-sonnet-4.5")
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+    with patch("app.platform.services.inference.settings") as mock_settings, \
+         patch("app.platform.services.inference._get_client", return_value=mock_client):
+        mock_settings.inference_api_key = "key"
+        mock_settings.inference_model = "llama3.3-70b-instruct"
+        mock_settings.inference_vision_model = "anthropic-claude-sonnet-4.5"
+
+        await vision_analysis(
+            system_prompt="System",
+            user_prompt="User",
+            image_b64_list=["img1"],
+        )
+
+    call_kwargs = mock_client.chat.completions.create.call_args[1]
+    assert call_kwargs["model"] == "anthropic-claude-sonnet-4.5"
+
+
+@pytest.mark.asyncio
+async def test_vision_analysis_custom_model_override():
+    mock_resp = _mock_completion_response(model="gpt-5.2")
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+    with patch("app.platform.services.inference.settings") as mock_settings, \
+         patch("app.platform.services.inference._get_client", return_value=mock_client):
+        mock_settings.inference_api_key = "key"
+        mock_settings.inference_model = "llama3.3-70b-instruct"
+        mock_settings.inference_vision_model = "anthropic-claude-sonnet-4.5"
+
+        await vision_analysis(
+            system_prompt="System",
+            user_prompt="User",
+            image_b64_list=["img1"],
+            model="gpt-5.2",
+        )
+
+    call_kwargs = mock_client.chat.completions.create.call_args[1]
+    assert call_kwargs["model"] == "gpt-5.2"
