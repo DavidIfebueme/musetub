@@ -25,8 +25,7 @@ export default function CreatorStudio({
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [contentType, setContentType] = useState('video');
-  const [engagementIntent, setEngagementIntent] = useState('entertainment');
+  const [category, setCategory] = useState('entertainment');
   const [showUpload, setShowUpload] = useState(false);
 
   const totals = useMemo(() => {
@@ -57,8 +56,8 @@ export default function CreatorStudio({
         file,
         title,
         description,
-        content_type: contentType,
-        engagement_intent: engagementIntent,
+        content_type: 'video',
+        engagement_intent: category,
       });
       setFile(null);
       setTitle('');
@@ -294,18 +293,27 @@ export default function CreatorStudio({
               />
 
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  value={contentType}
-                  onChange={(e) => setContentType(e.target.value)}
-                  placeholder="type"
-                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
-                <input
-                  value={engagementIntent}
-                  onChange={(e) => setEngagementIntent(e.target.value)}
-                  placeholder="intent"
-                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
+                <div className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 text-zinc-500 flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.35em]">Type</span>
+                  <span className="text-white font-bold">Video</span>
+                </div>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30 text-white appearance-none cursor-pointer"
+                >
+                  <option value="entertainment">Entertainment</option>
+                  <option value="education">Education</option>
+                  <option value="tutorial">Tutorial</option>
+                  <option value="music">Music</option>
+                  <option value="gaming">Gaming</option>
+                  <option value="vlog">Vlog</option>
+                  <option value="sports">Sports</option>
+                  <option value="news">News</option>
+                  <option value="comedy">Comedy</option>
+                  <option value="documentary">Documentary</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
 
               <input
