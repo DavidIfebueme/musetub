@@ -16,9 +16,6 @@ export async function uploadContent(
     title: string;
     description: string;
     content_type: string;
-    duration_seconds: number;
-    resolution: string;
-    bitrate_tier: string;
     engagement_intent: string;
   },
 ): Promise<ContentResponse> {
@@ -27,9 +24,6 @@ export async function uploadContent(
   form.append('title', args.title);
   form.append('description', args.description);
   form.append('content_type', args.content_type);
-  form.append('duration_seconds', String(args.duration_seconds));
-  form.append('resolution', args.resolution);
-  form.append('bitrate_tier', args.bitrate_tier);
   form.append('engagement_intent', args.engagement_intent);
 
   const url = `${getApiBaseUrl()}/content/upload`;

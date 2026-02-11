@@ -26,9 +26,6 @@ export default function CreatorStudio({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [contentType, setContentType] = useState('video');
-  const [durationSeconds, setDurationSeconds] = useState(60);
-  const [resolution, setResolution] = useState('1080p');
-  const [bitrateTier, setBitrateTier] = useState('high');
   const [engagementIntent, setEngagementIntent] = useState('entertainment');
   const [showUpload, setShowUpload] = useState(false);
 
@@ -61,9 +58,6 @@ export default function CreatorStudio({
         title,
         description,
         content_type: contentType,
-        duration_seconds: durationSeconds,
-        resolution,
-        bitrate_tier: bitrateTier,
         engagement_intent: engagementIntent,
       });
       setFile(null);
@@ -285,28 +279,6 @@ export default function CreatorStudio({
                   value={contentType}
                   onChange={(e) => setContentType(e.target.value)}
                   placeholder="type"
-                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
-                <input
-                  value={durationSeconds}
-                  onChange={(e) => setDurationSeconds(Number(e.target.value))}
-                  placeholder="duration (sec)"
-                  type="number"
-                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <input
-                  value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                  placeholder="resolution"
-                  className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
-                <input
-                  value={bitrateTier}
-                  onChange={(e) => setBitrateTier(e.target.value)}
-                  placeholder="bitrate"
                   className="w-full px-4 py-3 rounded-2xl bg-zinc-950 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                 />
                 <input
