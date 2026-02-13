@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 _client: AsyncGradient | None = None
 
 
+def _is_claude_family_model(model: str) -> bool:
+    value = model.lower()
+    return "claude" in value or "anthropic" in value
+
+
 @dataclass(frozen=True)
 class InferenceResponse:
     text: str
@@ -102,19 +107,27 @@ async def vision_analysis(
     temperature: float = 0.3,
     max_tokens: int = 1024,
 ) -> InferenceResponse:
-    content_parts: list[dict] = [{"type": "text", "text": user_prompt}]
-    for b64 in image_b64_list:
-        content_parts.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-        })
+    resolved_model = model or settings.inference_vision_model
+
+    if _is_claude_family_model(resolved_model):
+        logger.warning(
+            "Vision model '%s' on chat.completions does not accept image_url blocks; using text-only fallback.",
+            resolved_model,
+        )
+        user_content: str | list[dict] = user_prompt
+    else:
+        content_parts: list[dict] = [{"type": "text", "text": user_prompt}]
+        for b64 in image_b64_list:
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+            })
+        user_content = content_parts
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": content_parts},
+        {"role": "user", "content": user_content},
     ]
-
-    resolved_model = model or settings.inference_vision_model
 
     return await chat_completion(
         messages=messages,
